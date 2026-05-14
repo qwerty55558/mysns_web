@@ -1,26 +1,125 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4faf6;
+  --foreground: #0c1a14;
+  --paper: #ffffff;
+  --ink-soft: #4f6258;
+  --rule: #dbe9e0;
+
+  /* Naver-pay signature green scale */
+  --pay-mint: #b8f0ce;
+  --pay-leaf: #6deda0;
+  --pay-signature: #03c75a;
+  --pay-forest: #009f46;
+  --pay-pine: #006a32;
+
+  --pay: var(--pay-signature);
+  --pay-on: #ffffff;
+
+  --gradient-pay: linear-gradient(
+    135deg,
+    var(--pay-leaf) 0%,
+    var(--pay-signature) 55%,
+    var(--pay-forest) 100%
+  );
+
+  --danger: #d6463f;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-paper: var(--paper);
+  --color-ink-soft: var(--ink-soft);
+  --color-rule: var(--rule);
+  --color-pay: var(--pay-signature);
+  --color-pay-forest: var(--pay-forest);
+  --color-danger: var(--danger);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --font-display: var(--font-instrument-serif);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.text-pay-gradient {
+  background: var(--gradient-pay);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-pay-gradient {
+  background: var(--gradient-pay);
+}
+
+.bg-pay {
+  background-color: var(--pay);
+}
+
+.text-pay {
+  color: var(--pay);
+}
+
+.ring-pay {
+  box-shadow: 0 0 0 1px var(--pay);
+}
+
+@keyframes phone-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) rotate(var(--rot, 0deg));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(var(--rot, 0deg));
+  }
+}
+
+.phone-rise {
+  animation: phone-rise 900ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes word-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.word-rise {
+  animation: word-rise 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes pay-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(3, 199, 90, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(3, 199, 90, 0);
+  }
+}
+
+.pay-pulse {
+  animation: pay-pulse 2.4s ease-in-out infinite;
+}
+
+/* Subtle dotted paper texture, very light */
+.paper-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    rgba(3, 199, 90, 0.07) 1px,
+    transparent 0
+  );
+  background-size: 22px 22px;
 }
