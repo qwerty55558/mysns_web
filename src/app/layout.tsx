@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import { SessionProvider } from "next-auth/react";
 import { ApolloProvider } from "@/lib/apollo-provider";
+import { AuthTokenBridge } from "@/features/auth/AuthTokenBridge";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -38,7 +40,10 @@ export default function RootLayout({
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col paper-grid">
-        <ApolloProvider>{children}</ApolloProvider>
+        <SessionProvider>
+          <AuthTokenBridge />
+          <ApolloProvider>{children}</ApolloProvider>
+        </SessionProvider>
       </body>
     </html>
   );
