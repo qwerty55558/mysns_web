@@ -23,6 +23,14 @@ const FeedQuery = graphql(`
         displayName
         avatarUrl
       }
+      previewComment {
+        id
+        content
+        author {
+          id
+          username
+        }
+      }
     }
   }
 `);

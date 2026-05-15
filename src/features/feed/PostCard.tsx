@@ -7,12 +7,19 @@ import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
 import { Bookmark, Bubble, Dots, Heart, Send } from "@/components/insta-icons";
 import { PostCarousel } from "./PostCarousel";
+import { CommentSheet } from "./CommentSheet";
 
 type Author = {
   id: string;
   username: string;
   displayName: string;
   avatarUrl?: string | null;
+};
+
+type PreviewComment = {
+  id: string;
+  content: string;
+  author: Pick<Author, "id" | "username">;
 };
 
 type Post = {
@@ -27,6 +34,7 @@ type Post = {
   viewerHasLiked: boolean;
   viewerHasBookmarked: boolean;
   author: Author;
+  previewComment?: PreviewComment | null;
 };
 
 const LikeMutation = graphql(`
@@ -89,6 +97,7 @@ export function PostCard({ post }: { post: Post }) {
   const isMine = session?.user?.id != null && session.user.id === post.author.id;
 
   const [editing, setEditing] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   if (editing) {
     return (
@@ -102,15 +111,26 @@ export function PostCard({ post }: { post: Post }) {
   }
 
   return (
-    <article className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]">
-      <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} />
+    <>
+      <article className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]">
+        <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} />
 
-      {post.imageUrls.length > 0 && (
-        <PostCarousel imageUrls={post.imageUrls} tag={post.tag} />
-      )}
+        {post.imageUrls.length > 0 && (
+          <PostCarousel imageUrls={post.imageUrls} tag={post.tag} />
+        )}
 
-      <PostActions post={post} hasCover={post.imageUrls.length > 0} />
-    </article>
+        <PostActions
+          post={post}
+          hasCover={post.imageUrls.length > 0}
+          onOpenComments={() => setSheetOpen(true)}
+        />
+      </article>
+      <CommentSheet
+        postId={post.id}
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+      />
+    </>
   );
 }
 
@@ -161,7 +181,15 @@ function PostHeader({
   );
 }
 
-function PostActions({ post, hasCover }: { post: Post; hasCover: boolean }) {
+function PostActions({
+  post,
+  hasCover,
+  onOpenComments,
+}: {
+  post: Post;
+  hasCover: boolean;
+  onOpenComments: () => void;
+}) {
   const [like] = useMutation(LikeMutation);
   const [unlike] = useMutation(UnlikeMutation);
   const [bookmark] = useMutation(BookmarkMutation);
@@ -235,7 +263,12 @@ function PostActions({ post, hasCover }: { post: Post; hasCover: boolean }) {
             }`}
           />
         </button>
-        <button type="button" aria-label="댓글" className="transition-transform active:scale-90">
+        <button
+          type="button"
+          aria-label="댓글"
+          onClick={onOpenComments}
+          className="transition-transform active:scale-90"
+        >
           <Bubble className="h-[22px] w-[22px] text-[color:var(--foreground)]" />
         </button>
         <button type="button" aria-label="공유" className="transition-transform active:scale-90">
@@ -269,9 +302,27 @@ function PostActions({ post, hasCover }: { post: Post; hasCover: boolean }) {
         <span className="font-semibold">{post.author.username}</span>{" "}
         <span className="text-[color:var(--foreground)]/85">{post.content}</span>
       </p>
+      {post.previewComment && (
+        <button
+          type="button"
+          onClick={onOpenComments}
+          className="text-left text-[13px] leading-snug text-[color:var(--foreground)]/80 transition-colors hover:text-[color:var(--foreground)]"
+        >
+          <span className="font-semibold">
+            {post.previewComment.author.username}
+          </span>{" "}
+          <span className="text-[color:var(--foreground)]/75">
+            {post.previewComment.content}
+          </span>
+        </button>
+      )}
       <div className="flex items-center gap-3 text-[12px] text-[color:var(--ink-soft)]">
         {post.commentCount > 0 && (
-          <button type="button" className="hover:text-[color:var(--foreground)]">
+          <button
+            type="button"
+            onClick={onOpenComments}
+            className="transition-colors hover:text-[color:var(--foreground)]"
+          >
             댓글 {post.commentCount}개 모두 보기
           </button>
         )}
