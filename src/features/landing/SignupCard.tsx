@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { LoginForm } from "@/features/auth/LoginForm";
+import { SignupForm } from "@/features/auth/SignupForm";
 
-export function LoginCard() {
+export function SignupCard() {
   return (
     <div className="flex w-full max-w-sm flex-col gap-4">
       <div className="rounded-2xl border border-[color:var(--rule)] bg-[color:var(--paper)] px-8 py-10 shadow-[0_1px_0_rgba(0,0,0,0.02),0_20px_40px_-30px_rgba(20,12,30,0.25)]">
@@ -14,29 +14,18 @@ export function LoginCard() {
             Payflow
           </Link>
           <p className="text-center text-[13px] text-[color:var(--ink-soft)]">
-            기록하고, 공유하고, 바로 송금까지.
+            한 컷의 영수증, 한 번의 송금으로 시작.
           </p>
         </div>
         <div className="mt-8">
-          <LoginForm />
+          <SignupForm />
         </div>
-        <div className="mt-6 flex items-center gap-3 text-[11px] uppercase tracking-[0.18em] text-[color:var(--ink-soft)]">
-          <span className="h-px flex-1 bg-[color:var(--rule)]" />
-          or
-          <span className="h-px flex-1 bg-[color:var(--rule)]" />
-        </div>
-        <p className="mt-4 text-center text-[12px] text-[color:var(--ink-soft)]">
-          Stage 1 데모 계정 ·{" "}
-          <span className="font-mono text-[color:var(--foreground)]/80">
-            alice / password
-          </span>
-        </p>
       </div>
 
       <div className="rounded-2xl border border-[color:var(--rule)] bg-[color:var(--paper)] px-6 py-5 text-center text-[13px] text-[color:var(--foreground)]/80">
-        계정이 없으신가요?{" "}
-        <Link href="/signup" className="font-semibold text-pay-gradient">
-          가입하기
+        이미 계정이 있으신가요?{" "}
+        <Link href="/login" className="font-semibold text-pay-gradient">
+          로그인
         </Link>
       </div>
     </div>

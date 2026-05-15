@@ -1,38 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useApolloClient, useQuery } from "@apollo/client/react";
-import { graphql } from "@/gql";
-import { clearToken, getToken, onAuthChanged } from "@/lib/auth";
-
-const MeQuery = graphql(`
-  query Me {
-    me {
-      id
-      username
-      displayName
-    }
-  }
-`);
+import { signOut, useSession } from "next-auth/react";
 
 export function MeBadge() {
-  const client = useApolloClient();
-  const [hasToken, setHasToken] = useState(false);
+  const { data: session, status } = useSession();
 
-  useEffect(() => {
-    setHasToken(Boolean(getToken()));
-    return onAuthChanged(() => setHasToken(Boolean(getToken())));
-  }, []);
+  if (status === "loading") {
+    return (
+      <span className="text-[12px] text-[color:var(--ink-soft)]">…</span>
+    );
+  }
 
-  const { data, loading } = useQuery(MeQuery, { skip: !hasToken });
-
-  const onSignOut = async () => {
-    clearToken();
-    await client.resetStore();
-  };
-
-  if (!hasToken) {
+  if (!session?.user) {
     return (
       <Link
         href="/login"
@@ -43,39 +23,26 @@ export function MeBadge() {
     );
   }
 
-  if (loading) {
-    return (
-      <span className="text-[12px] text-[color:var(--ink-soft)]">…</span>
-    );
-  }
-
-  const me = data?.me;
-  if (!me) {
-    return (
-      <button
-        onClick={onSignOut}
-        className="rounded-full border border-[color:var(--rule)] px-4 py-1.5 text-[12.5px] text-[color:var(--foreground)] transition-colors hover:border-[color:var(--pay)]/40"
-      >
-        Sign out
-      </button>
-    );
-  }
+  const displayName = session.user.name ?? session.user.username ?? "you";
+  const username = session.user.username ?? "";
 
   return (
     <div className="flex items-center gap-3 text-[12.5px]">
       <span className="flex items-center gap-2">
         <span className="bg-pay-gradient inline-flex h-7 w-7 items-center justify-center rounded-full p-[2px]">
           <span className="flex h-full w-full items-center justify-center rounded-full bg-[color:var(--paper)] text-[10.5px] font-semibold">
-            {me.displayName.charAt(0).toUpperCase()}
+            {displayName.charAt(0).toUpperCase()}
           </span>
         </span>
         <span>
-          <span className="font-medium">{me.displayName}</span>{" "}
-          <span className="text-[color:var(--ink-soft)]">@{me.username}</span>
+          <span className="font-medium">{displayName}</span>{" "}
+          {username && (
+            <span className="text-[color:var(--ink-soft)]">@{username}</span>
+          )}
         </span>
       </span>
       <button
-        onClick={onSignOut}
+        onClick={() => signOut({ redirectTo: "/" })}
         className="rounded-full border border-[color:var(--rule)] px-3 py-1 text-[11.5px] text-[color:var(--ink-soft)] transition-colors hover:border-[color:var(--pay)]/40 hover:text-[color:var(--foreground)]"
       >
         Sign out

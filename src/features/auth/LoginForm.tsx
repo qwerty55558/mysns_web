@@ -2,40 +2,31 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useApolloClient, useMutation } from "@apollo/client/react";
-import { graphql } from "@/gql";
-import { setToken } from "@/lib/auth";
-
-const LoginMutation = graphql(`
-  mutation Login($input: LoginInput!) {
-    login(input: $input) {
-      accessToken
-      user {
-        id
-        username
-        displayName
-      }
-    }
-  }
-`);
+import { signIn } from "next-auth/react";
 
 export function LoginForm() {
   const router = useRouter();
-  const client = useApolloClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [login, { loading, error }] = useMutation(LoginMutation);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const result = await login({
-      variables: { input: { username, password } },
+    setLoading(true);
+    setError(null);
+    const result = await signIn("credentials", {
+      username,
+      password,
+      redirect: false,
     });
-    const token = result.data?.login.accessToken;
-    if (!token) return;
-    setToken(token);
-    await client.resetStore();
+    setLoading(false);
+    if (result?.error) {
+      setError("Username 또는 password가 올바르지 않습니다.");
+      return;
+    }
     router.push("/home");
+    router.refresh();
   };
 
   const filled = username.length > 0 && password.length > 0;
@@ -66,9 +57,7 @@ export function LoginForm() {
       </button>
       {error && (
         <p role="alert" className="text-sm text-[color:var(--danger)]">
-          {error.message === "Unauthorized"
-            ? "Username 또는 password가 올바르지 않습니다."
-            : error.message}
+          {error}
         </p>
       )}
     </form>

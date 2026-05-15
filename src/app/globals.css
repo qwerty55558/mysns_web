@@ -123,3 +123,10 @@ body {
   );
   background-size: 22px 22px;
 }
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
