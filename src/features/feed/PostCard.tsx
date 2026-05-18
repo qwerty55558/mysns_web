@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
@@ -8,6 +9,7 @@ import { graphql } from "@/gql";
 import { Bookmark, Bubble, Dots, Heart, Send } from "@/components/insta-icons";
 import { PostCarousel } from "./PostCarousel";
 import { CommentSheet } from "./CommentSheet";
+import { PlacePicker, type PlaceDraft } from "./PlacePicker";
 
 type Author = {
   id: string;
@@ -22,12 +24,25 @@ type PreviewComment = {
   author: Pick<Author, "id" | "username">;
 };
 
+type Place = {
+  latitude: number;
+  longitude: number;
+  name: string;
+  address?: string | null;
+  externalId?: string | null;
+  categoryName?: string | null;
+  categoryCode?: string | null;
+};
+
 type Post = {
   id: string;
   content: string;
   createdAt: string;
   imageUrls: ReadonlyArray<string>;
   tag?: string | null;
+  item?: string | null;
+  amount?: number | null;
+  place?: Place | null;
   likeCount: number;
   commentCount: number;
   shareCount: number;
@@ -87,6 +102,17 @@ const UpdatePostMutation = graphql(`
       id
       content
       tag
+      item
+      amount
+      place {
+        latitude
+        longitude
+        name
+        address
+        externalId
+        categoryName
+        categoryCode
+      }
       updatedAt
     }
   }
@@ -116,7 +142,11 @@ export function PostCard({ post }: { post: Post }) {
         <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} />
 
         {post.imageUrls.length > 0 && (
-          <PostCarousel imageUrls={post.imageUrls} tag={post.tag} />
+          <PostCarousel
+            imageUrls={post.imageUrls}
+            item={post.item}
+            amount={post.amount}
+          />
         )}
 
         <PostActions
@@ -145,7 +175,11 @@ function PostHeader({
 }) {
   return (
     <header className="flex items-center gap-2.5 px-4 py-3">
-      <span className="bg-pay-gradient inline-flex h-9 w-9 items-center justify-center rounded-full p-[2px]">
+      <Link
+        href={`/u/${post.author.username}`}
+        aria-label={`${post.author.username} 프로필로 이동`}
+        className="bg-pay-gradient inline-flex h-9 w-9 items-center justify-center rounded-full p-[2px]"
+      >
         <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[12px] font-semibold tracking-wide">
           {post.author.avatarUrl ? (
             <Image
@@ -159,16 +193,25 @@ function PostHeader({
             post.author.displayName.charAt(0).toUpperCase()
           )}
         </span>
-      </span>
+      </Link>
       <div className="flex flex-col leading-tight">
-        <span className="text-[13px] font-semibold">{post.author.username}</span>
-        <time
-          dateTime={post.createdAt}
-          title={post.createdAt}
-          className="text-[11px] text-[color:var(--ink-soft)]"
+        <Link
+          href={`/u/${post.author.username}`}
+          className="text-[13px] font-semibold transition-colors hover:text-[color:var(--pay-forest)]"
         >
-          {formatDateTime(post.createdAt)}
-        </time>
+          {post.author.username}
+        </Link>
+        <div className="flex items-center gap-1.5 text-[11px] text-[color:var(--ink-soft)]">
+          <time dateTime={post.createdAt} title={post.createdAt}>
+            {formatDateTime(post.createdAt)}
+          </time>
+          {post.place && (
+            <>
+              <span aria-hidden>·</span>
+              <PlaceLine place={post.place} />
+            </>
+          )}
+        </div>
       </div>
       <div className="ml-auto">
         {isMine ? (
@@ -290,17 +333,36 @@ function PostActions({
           />
         </button>
       </div>
-      {!hasCover && post.tag && (
-        <span className="inline-flex w-fit items-center rounded-full bg-[color:var(--pay)]/10 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--pay-forest)]">
-          {post.tag}
-        </span>
+      {!hasCover && (post.item || post.amount != null) && (
+        <div className="flex w-fit items-center gap-1.5">
+          {post.item && (
+            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)]/10 px-2.5 py-0.5 text-[12px] font-medium text-[color:var(--pay-forest)]">
+              {post.item}
+            </span>
+          )}
+          {post.amount != null && (
+            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)]">
+              {formatKrw(post.amount)}
+            </span>
+          )}
+        </div>
       )}
       <p className="text-[13px] font-semibold">
         좋아요 {post.likeCount.toLocaleString()}개
       </p>
       <p className="text-[13.5px] leading-snug">
-        <span className="font-semibold">{post.author.username}</span>{" "}
+        <Link
+          href={`/u/${post.author.username}`}
+          className="font-semibold transition-colors hover:text-[color:var(--pay-forest)]"
+        >
+          {post.author.username}
+        </Link>{" "}
         <span className="text-[color:var(--foreground)]/85">{post.content}</span>
+        {post.tag && (
+          <span className="ml-1.5 text-[color:var(--pay-forest)]">
+            #{post.tag}
+          </span>
+        )}
       </p>
       {post.previewComment && (
         <button
@@ -424,23 +486,55 @@ function PostEditor({
   post,
   onClose,
 }: {
-  post: Pick<Post, "id" | "content" | "tag">;
+  post: Pick<Post, "id" | "content" | "tag" | "item" | "amount" | "place">;
   onClose: () => void;
 }) {
   const [content, setContent] = useState(post.content);
   const [tag, setTag] = useState(post.tag ?? "");
+  const [item, setItem] = useState(post.item ?? "");
+  const [amount, setAmount] = useState(
+    post.amount != null ? String(post.amount) : "",
+  );
+  const [place, setPlace] = useState<PlaceDraft | null>(
+    post.place
+      ? {
+          latitude: post.place.latitude,
+          longitude: post.place.longitude,
+          name: post.place.name,
+          address: post.place.address ?? null,
+          externalId: post.place.externalId ?? null,
+        }
+      : null,
+  );
   const [update, { loading }] = useMutation(UpdatePostMutation);
   const formId = useId();
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (content.trim().length === 0) return;
+    const trimmedAmount = amount.trim();
+    const parsedAmount =
+      trimmedAmount === "" ? null : Number(trimmedAmount.replace(/[^0-9]/g, ""));
+    if (parsedAmount != null && !Number.isFinite(parsedAmount)) return;
     await update({
       variables: {
         id: post.id,
         input: {
           content: content.trim(),
           tag: tag.trim() === "" ? null : tag.trim(),
+          item: item.trim() === "" ? null : item.trim(),
+          amount: parsedAmount,
+          place: place
+            ? {
+                latitude: place.latitude,
+                longitude: place.longitude,
+                name: place.name,
+                address: place.address ?? null,
+                externalId: place.externalId ?? null,
+                categoryName: place.categoryName ?? null,
+                categoryCode: place.categoryCode ?? null,
+              }
+            : null,
         },
       },
     });
@@ -459,12 +553,29 @@ function PostEditor({
         className="resize-none rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[14px] outline-none focus:border-[color:var(--foreground)]/40"
         placeholder="내용"
       />
+      <div className="grid grid-cols-[1fr_auto] gap-2">
+        <input
+          value={item}
+          onChange={(e) => setItem(e.target.value)}
+          className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40"
+          placeholder="지출 항목 (예: 김치찌개 정식)"
+        />
+        <input
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
+          className="w-32 rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-right font-mono text-[13px] tabular-nums outline-none focus:border-[color:var(--foreground)]/40"
+          placeholder="금액(원)"
+        />
+      </div>
       <input
         value={tag}
         onChange={(e) => setTag(e.target.value)}
-        className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40"
-        placeholder="태그 (옵션)"
+        className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[12.5px] outline-none focus:border-[color:var(--foreground)]/40"
+        placeholder="태그 (#커피 같이 자유)"
       />
+      <PlacePicker value={place} onChange={setPlace} />
       <div className="flex items-center justify-end gap-2">
         <button
           type="button"
@@ -484,6 +595,55 @@ function PostEditor({
       </div>
     </form>
   );
+}
+
+function PlaceLine({ place }: { place: Place }) {
+  const label =
+    place.name.trim() ||
+    place.address?.trim() ||
+    `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`;
+  const href = `https://map.kakao.com/link/map/${encodeURIComponent(label)},${place.latitude},${place.longitude}`;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={place.address ?? label}
+      className="inline-flex max-w-[180px] items-center gap-0.5 truncate transition-colors hover:text-[color:var(--foreground)]"
+    >
+      <PinIcon />
+      <span className="truncate">{label}</span>
+    </a>
+  );
+}
+
+function PinIcon() {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M20 10c0 7-8 12-8 12s-8-5-8-12a8 8 0 0 1 16 0Z" />
+      <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+const krwFormatter = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+});
+
+function formatKrw(value: number): string {
+  return krwFormatter.format(value);
 }
 
 function formatDateTime(iso: string): string {
