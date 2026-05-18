@@ -2,13 +2,21 @@
 
 import Image from "next/image";
 import { useRef, useState } from "react";
+import { toAbsoluteMediaUrl } from "@/lib/upload";
 
 type Props = {
   imageUrls: ReadonlyArray<string>;
-  tag?: string | null;
+  item?: string | null;
+  amount?: number | null;
 };
 
-export function PostCarousel({ imageUrls, tag }: Props) {
+const krwFormatter = new Intl.NumberFormat("ko-KR", {
+  style: "currency",
+  currency: "KRW",
+  maximumFractionDigits: 0,
+});
+
+export function PostCarousel({ imageUrls, item, amount }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const total = imageUrls.length;
@@ -30,6 +38,9 @@ export function PostCarousel({ imageUrls, tag }: Props) {
     if (i !== index) setIndex(i);
   };
 
+  const canPrev = index > 0;
+  const canNext = index < total - 1;
+
   return (
     <div className="group relative aspect-square w-full overflow-hidden">
       <div
@@ -43,7 +54,7 @@ export function PostCarousel({ imageUrls, tag }: Props) {
             className="relative h-full w-full shrink-0 snap-center"
           >
             <Image
-              src={url}
+              src={toAbsoluteMediaUrl(url)}
               alt=""
               fill
               sizes="(max-width: 768px) 100vw, 600px"
@@ -54,10 +65,19 @@ export function PostCarousel({ imageUrls, tag }: Props) {
         ))}
       </div>
 
-      {tag && (
-        <span className="pointer-events-none absolute left-3 top-3 inline-flex items-center rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[color:var(--pay-forest)] ring-1 ring-[color:var(--pay)]/25 backdrop-blur-sm">
-          {tag}
-        </span>
+      {(item || amount != null) && (
+        <div className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-6rem)] items-center gap-1.5">
+          {item && (
+            <span className="inline-flex items-center truncate rounded-full bg-white/95 px-3 py-1 text-[12px] font-medium text-[color:var(--pay-forest)] ring-1 ring-[color:var(--pay)]/25 backdrop-blur-sm">
+              {item}
+            </span>
+          )}
+          {amount != null && (
+            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-3 py-1 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)] shadow-[0_6px_18px_-8px_rgba(3,199,90,0.55)]">
+              {krwFormatter.format(amount)}
+            </span>
+          )}
+        </div>
       )}
 
       {total > 1 && (
@@ -66,24 +86,28 @@ export function PostCarousel({ imageUrls, tag }: Props) {
             {index + 1} / {total}
           </span>
 
-          {index > 0 && (
+          {canPrev && (
             <button
               type="button"
               aria-label="이전 이미지"
               onClick={() => goTo(index - 1)}
-              className="absolute left-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/85 p-1.5 text-[color:var(--foreground)] opacity-0 shadow-md backdrop-blur transition-opacity group-hover:opacity-100 sm:flex"
+              className="group/zone absolute left-0 top-0 z-10 flex h-full w-1/3 cursor-w-resize items-center justify-start pl-3 focus:outline-none"
             >
-              <ChevronLeft />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-[color:var(--foreground)] opacity-0 shadow-md backdrop-blur transition-opacity duration-150 group-hover/zone:opacity-100 group-focus-visible/zone:opacity-100">
+                <ChevronLeft />
+              </span>
             </button>
           )}
-          {index < total - 1 && (
+          {canNext && (
             <button
               type="button"
               aria-label="다음 이미지"
               onClick={() => goTo(index + 1)}
-              className="absolute right-2 top-1/2 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/85 p-1.5 text-[color:var(--foreground)] opacity-0 shadow-md backdrop-blur transition-opacity group-hover:opacity-100 sm:flex"
+              className="group/zone absolute right-0 top-0 z-10 flex h-full w-1/3 cursor-e-resize items-center justify-end pr-3 focus:outline-none"
             >
-              <ChevronRight />
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/85 text-[color:var(--foreground)] opacity-0 shadow-md backdrop-blur transition-opacity duration-150 group-hover/zone:opacity-100 group-focus-visible/zone:opacity-100">
+                <ChevronRight />
+              </span>
             </button>
           )}
 
@@ -105,7 +129,7 @@ export function PostCarousel({ imageUrls, tag }: Props) {
 
 function ChevronLeft() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polyline points="15 18 9 12 15 6" />
     </svg>
   );
@@ -113,7 +137,7 @@ function ChevronLeft() {
 
 function ChevronRight() {
   return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <polyline points="9 18 15 12 9 6" />
     </svg>
   );
