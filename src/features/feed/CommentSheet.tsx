@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
+import { Heart } from "@/components/insta-icons";
 
 const PAGE = 20;
 
@@ -46,6 +47,32 @@ const AddCommentMutation = graphql(`
         avatarUrl
       }
     }
+  }
+`);
+
+const LikeCommentMutation = graphql(`
+  mutation LikeComment($id: ID!) {
+    likeComment(id: $id) {
+      id
+      likeCount
+      viewerHasLiked
+    }
+  }
+`);
+
+const UnlikeCommentMutation = graphql(`
+  mutation UnlikeComment($id: ID!) {
+    unlikeComment(id: $id) {
+      id
+      likeCount
+      viewerHasLiked
+    }
+  }
+`);
+
+const DeleteCommentMutation = graphql(`
+  mutation DeleteComment($id: ID!) {
+    deleteComment(id: $id)
   }
 `);
 
@@ -196,40 +223,12 @@ export function CommentSheet({ postId, open, onClose }: Props) {
           )}
           <ul className="flex flex-col">
             {comments.map((c) => (
-              <li
+              <CommentRow
                 key={c.id}
-                className="flex items-start gap-3 border-b border-[color:var(--rule)]/60 px-5 py-3 last:border-b-0"
-              >
-                <span className="bg-pay-gradient inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-[2px]">
-                  <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[10.5px] font-semibold">
-                    {c.author.avatarUrl ? (
-                      <Image
-                        src={c.author.avatarUrl}
-                        alt=""
-                        width={32}
-                        height={32}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      c.author.displayName.charAt(0).toUpperCase()
-                    )}
-                  </span>
-                </span>
-                <div className="flex-1">
-                  <p className="text-[13px] leading-snug">
-                    <span className="font-semibold">{c.author.username}</span>{" "}
-                    <span className="text-[color:var(--foreground)]/85">
-                      {c.content}
-                    </span>
-                  </p>
-                  <div className="mt-1 flex items-center gap-3 text-[11px] text-[color:var(--ink-soft)]">
-                    <time dateTime={c.createdAt}>{formatAge(c.createdAt)}</time>
-                    {c.likeCount > 0 && (
-                      <span>좋아요 {c.likeCount.toLocaleString()}</span>
-                    )}
-                  </div>
-                </div>
-              </li>
+                comment={c}
+                postId={postId}
+                viewerId={session?.user?.id ?? null}
+              />
             ))}
           </ul>
           {hasMore && (
@@ -258,6 +257,157 @@ export function CommentSheet({ postId, open, onClose }: Props) {
         />
       </div>
     </div>
+  );
+}
+
+type CommentRowData = {
+  id: string;
+  content: string;
+  createdAt: string;
+  likeCount: number;
+  viewerHasLiked: boolean;
+  author: {
+    id: string;
+    username: string;
+    displayName: string;
+    avatarUrl?: string | null;
+  };
+};
+
+function CommentRow({
+  comment,
+  postId,
+  viewerId,
+}: {
+  comment: CommentRowData;
+  postId: string;
+  viewerId: string | null;
+}) {
+  const isMine = viewerId != null && viewerId === comment.author.id;
+  const [likeComment] = useMutation(LikeCommentMutation);
+  const [unlikeComment] = useMutation(UnlikeCommentMutation);
+  const [deleteComment, { loading: deleting }] = useMutation(
+    DeleteCommentMutation,
+  );
+
+  const toggleLike = () => {
+    if (!viewerId) return;
+    if (comment.viewerHasLiked) {
+      void unlikeComment({
+        variables: { id: comment.id },
+        optimisticResponse: {
+          unlikeComment: {
+            id: comment.id,
+            likeCount: Math.max(0, comment.likeCount - 1),
+            viewerHasLiked: false,
+          },
+        },
+      });
+    } else {
+      void likeComment({
+        variables: { id: comment.id },
+        optimisticResponse: {
+          likeComment: {
+            id: comment.id,
+            likeCount: comment.likeCount + 1,
+            viewerHasLiked: true,
+          },
+        },
+      });
+    }
+  };
+
+  const onDelete = async () => {
+    if (!window.confirm("댓글을 삭제할까요?")) return;
+    await deleteComment({
+      variables: { id: comment.id },
+      update: (cache) => {
+        const postCacheId = cache.identify({ __typename: "Post", id: postId });
+        if (postCacheId) {
+          cache.modify({
+            id: postCacheId,
+            fields: {
+              commentCount(existing) {
+                return Math.max(0, (typeof existing === "number" ? existing : 0) - 1);
+              },
+              comments(existing: ReadonlyArray<{ __ref: string }> = [], { readField }) {
+                return existing.filter(
+                  (ref) => readField("id", ref) !== comment.id,
+                );
+              },
+              previewComment(existing, { readField }) {
+                if (existing && readField("id", existing) === comment.id) return null;
+                return existing;
+              },
+            },
+          });
+        }
+        const id = cache.identify({ __typename: "Comment", id: comment.id });
+        if (id) cache.evict({ id });
+        cache.gc();
+      },
+    });
+  };
+
+  return (
+    <li className="flex items-start gap-3 border-b border-[color:var(--rule)]/60 px-5 py-3 last:border-b-0">
+      <span className="bg-pay-gradient inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full p-[2px]">
+        <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[10.5px] font-semibold">
+          {comment.author.avatarUrl ? (
+            <Image
+              src={comment.author.avatarUrl}
+              alt=""
+              width={32}
+              height={32}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            comment.author.displayName.charAt(0).toUpperCase()
+          )}
+        </span>
+      </span>
+      <div className="flex-1">
+        <p className="text-[13px] leading-snug">
+          <span className="font-semibold">{comment.author.username}</span>{" "}
+          <span className="text-[color:var(--foreground)]/85">
+            {comment.content}
+          </span>
+        </p>
+        <div className="mt-1 flex items-center gap-3 text-[11px] text-[color:var(--ink-soft)]">
+          <time dateTime={comment.createdAt}>{formatAge(comment.createdAt)}</time>
+          {comment.likeCount > 0 && (
+            <span>좋아요 {comment.likeCount.toLocaleString()}</span>
+          )}
+          {isMine && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={deleting}
+              className="transition-colors hover:text-[color:var(--danger)] disabled:opacity-50"
+            >
+              {deleting ? "삭제 중…" : "삭제"}
+            </button>
+          )}
+        </div>
+      </div>
+      {viewerId && (
+        <button
+          type="button"
+          onClick={toggleLike}
+          aria-label={comment.viewerHasLiked ? "댓글 좋아요 취소" : "댓글 좋아요"}
+          className="mt-1 shrink-0 transition-transform active:scale-90"
+        >
+          <Heart
+            filled={comment.viewerHasLiked}
+            className={`h-[14px] w-[14px] ${
+              comment.viewerHasLiked
+                ? "text-[color:var(--pay)]"
+                : "text-[color:var(--ink-soft)]"
+            }`}
+          />
+        </button>
+      )}
+    </li>
   );
 }
 

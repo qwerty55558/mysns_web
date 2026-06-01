@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
 import { uploadImage } from "@/lib/upload";
 import { PlacePicker, type PlaceDraft } from "./PlacePicker";
+import { searchPlaceByName } from "./kakao-place-search";
 
 const CreatePostMutation = graphql(`
   mutation CreatePost($input: CreatePostInput!) {
@@ -53,6 +54,10 @@ const AnalyzeReceiptQuery = graphql(`
   query AnalyzeReceipt($imageUrl: String!) {
     analyzeReceipt(imageUrl: $imageUrl) {
       amount
+      item
+      tag
+      placeName
+      rawText
       confidence
     }
   }
@@ -77,10 +82,19 @@ export function PostComposer() {
   const [place, setPlace] = useState<PlaceDraft | null>(null);
   const [images, setImages] = useState<ImageDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // OCR 결과 안내 (저신뢰도 안내 + rawText 참고 표시)
+  const [ocrNotice, setOcrNotice] = useState<string | null>(null);
+  const [ocrRawText, setOcrRawText] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const formId = useId();
   const amountRef = useRef(amount);
   amountRef.current = amount;
+  const itemRef = useRef(item);
+  itemRef.current = item;
+  const tagRef = useRef(tag);
+  tagRef.current = tag;
+  const placeRef = useRef(place);
+  placeRef.current = place;
   const imagesRef = useRef(images);
   imagesRef.current = images;
 
@@ -145,13 +159,42 @@ export function PostComposer() {
           fetchPolicy: "network-only",
         });
         const ocr = data?.analyzeReceipt;
-        if (ocr && ocr.amount != null && amountRef.current.trim() === "") {
-          const next = String(ocr.amount);
-          amountRef.current = next;
-          setAmount(next);
+        // BE의 ReceiptAnalyzer가 confidence < threshold면 의도적으로 amount=null로
+        // 떨군다 → amount 유무가 "신뢰할 수 있는 OCR"의 단일 신호.
+        if (ocr && ocr.amount != null) {
+          if (amountRef.current.trim() === "") {
+            const next = String(ocr.amount);
+            amountRef.current = next;
+            setAmount(next);
+          }
+          if (ocr.item && itemRef.current.trim() === "") {
+            itemRef.current = ocr.item;
+            setItem(ocr.item);
+          }
+          if (ocr.tag && tagRef.current.trim() === "") {
+            tagRef.current = ocr.tag;
+            setTag(ocr.tag);
+          }
+          if (ocr.placeName && !placeRef.current) {
+            try {
+              const found = await searchPlaceByName(ocr.placeName);
+              if (found && !placeRef.current) {
+                placeRef.current = found;
+                setPlace(found);
+              }
+            } catch {
+              // 카카오 검색 실패는 폴백이 아니라 사용자가 PlacePicker로 직접 추가하면 됨
+            }
+          }
+          setOcrNotice(null);
+          setOcrRawText(null);
+        } else if (ocr) {
+          // 저신뢰도 — 자동 채움하지 않고 안내 + rawText 참고 표시
+          setOcrNotice("OCR 결과 신뢰도가 낮습니다. 직접 입력해 주세요.");
+          setOcrRawText(ocr.rawText ?? null);
         }
       } catch {
-        // OCR 실패는 치명적 아님 — done으로 마감
+        // analyzeReceipt 호출 자체 실패 — 치명적 아님
       }
 
       updateImage(id, { status: "done" });
@@ -180,6 +223,8 @@ export function PostComposer() {
     setPlace(null);
     setImages([]);
     setError(null);
+    setOcrNotice(null);
+    setOcrRawText(null);
     setExpanded(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -300,6 +345,22 @@ export function PostComposer() {
           />
 
           <PlacePicker value={place} onChange={setPlace} />
+
+          {ocrNotice && (
+            <div className="flex flex-col gap-1 rounded-md border border-[color:var(--rule)] bg-[color:var(--rule)]/20 px-3 py-2">
+              <p className="text-[11.5px] text-[color:var(--ink-soft)]">
+                {ocrNotice}
+              </p>
+              {ocrRawText && ocrRawText.trim().length > 0 && (
+                <details className="text-[11px] text-[color:var(--ink-soft)]/80">
+                  <summary className="cursor-pointer">OCR 원문 보기</summary>
+                  <pre className="mt-1 max-h-32 overflow-y-auto whitespace-pre-wrap font-mono text-[10.5px] leading-snug">
+                    {ocrRawText}
+                  </pre>
+                </details>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="text-[12px] text-[color:var(--danger)]">{error}</p>

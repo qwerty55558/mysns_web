@@ -2,6 +2,7 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { UserMenu } from "@/features/auth/UserMenu";
+import { PrivacyToggle } from "@/features/auth/PrivacyToggle";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -24,8 +25,10 @@ export default async function SettingsPage() {
         </p>
         <section className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
           <SettingsRow label="프로필 편집" href="/me" />
-          <SettingsRow label="계정" hint="준비 중" disabled />
-          <SettingsRow label="알림" hint="준비 중" disabled />
+          <div className="border-b border-[color:var(--rule)]">
+            <PrivacyToggle />
+          </div>
+          <SettingsRow label="알림" href="/notifications" />
           <SettingsRow label="개인정보 처리방침" href="/about" />
         </section>
       </main>

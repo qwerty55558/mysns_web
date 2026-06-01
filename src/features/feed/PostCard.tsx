@@ -96,6 +96,15 @@ const DeletePostMutation = graphql(`
   }
 `);
 
+const SharePostMutation = graphql(`
+  mutation SharePost($postId: ID!) {
+    sharePost(postId: $postId) {
+      id
+      shareCount
+    }
+  }
+`);
+
 const UpdatePostMutation = graphql(`
   mutation UpdatePost($id: ID!, $input: UpdatePostInput!) {
     updatePost(id: $id, input: $input) {
@@ -237,6 +246,31 @@ function PostActions({
   const [unlike] = useMutation(UnlikeMutation);
   const [bookmark] = useMutation(BookmarkMutation);
   const [unbookmark] = useMutation(UnbookmarkMutation);
+  const [share, { loading: sharing }] = useMutation(SharePostMutation);
+
+  const onShare = async () => {
+    if (sharing) return;
+    const shareUrl =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/u/${post.author.username}`
+        : `/u/${post.author.username}`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+    } catch {
+      // 클립보드 실패는 무시 — 카운트는 그대로 증가
+    }
+    await share({
+      variables: { postId: post.id },
+      optimisticResponse: {
+        sharePost: {
+          id: post.id,
+          shareCount: post.shareCount + 1,
+        },
+      },
+    });
+  };
 
   const toggleLike = () => {
     if (post.viewerHasLiked) {
@@ -314,7 +348,13 @@ function PostActions({
         >
           <Bubble className="h-[22px] w-[22px] text-[color:var(--foreground)]" />
         </button>
-        <button type="button" aria-label="공유" className="transition-transform active:scale-90">
+        <button
+          type="button"
+          aria-label="공유 (링크 복사)"
+          onClick={onShare}
+          disabled={sharing}
+          className="transition-transform active:scale-90 disabled:opacity-50"
+        >
           <Send className="h-[22px] w-[22px] text-[color:var(--foreground)]" />
         </button>
         <button
@@ -602,7 +642,11 @@ function PlaceLine({ place }: { place: Place }) {
     place.name.trim() ||
     place.address?.trim() ||
     `${place.latitude.toFixed(4)}, ${place.longitude.toFixed(4)}`;
-  const href = `https://map.kakao.com/link/map/${encodeURIComponent(label)},${place.latitude},${place.longitude}`;
+  // externalId(카카오 place ID)가 있으면 가게 상세 페이지로 직링크 → 사용자에게 더 유용
+  // (좌표 핀보다 영업시간·리뷰·사진까지 보임). 없을 때만 좌표 핀 fallback.
+  const href = place.externalId
+    ? `https://place.map.kakao.com/${encodeURIComponent(place.externalId)}`
+    : `https://map.kakao.com/link/map/${encodeURIComponent(label)},${place.latitude},${place.longitude}`;
   return (
     <a
       href={href}
