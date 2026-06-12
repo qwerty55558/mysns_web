@@ -10,7 +10,7 @@ import { Heart } from "@/components/insta-icons";
 
 const PAGE = 20;
 
-const PostCommentsQuery = graphql(`
+export const PostCommentsQuery = graphql(`
   query PostComments($postId: ID!, $limit: Int!, $offset: Int!) {
     post(id: $postId) {
       id
@@ -274,7 +274,7 @@ type CommentRowData = {
   };
 };
 
-function CommentRow({
+export function CommentRow({
   comment,
   postId,
   viewerId,
@@ -411,7 +411,7 @@ function CommentRow({
   );
 }
 
-function CommentComposer({
+export function CommentComposer({
   postId,
   authed,
   afterPost,

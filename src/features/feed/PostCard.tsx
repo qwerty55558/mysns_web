@@ -10,6 +10,7 @@ import { Bookmark, Bubble, Dots, Heart, Send } from "@/components/insta-icons";
 import { PostCarousel } from "./PostCarousel";
 import { CommentSheet } from "./CommentSheet";
 import { PlacePicker, type PlaceDraft } from "./PlacePicker";
+import { ShareToDirectSheet } from "@/features/messages/ShareToDirectSheet";
 
 type Author = {
   id: string;
@@ -96,15 +97,6 @@ const DeletePostMutation = graphql(`
   }
 `);
 
-const SharePostMutation = graphql(`
-  mutation SharePost($postId: ID!) {
-    sharePost(postId: $postId) {
-      id
-      shareCount
-    }
-  }
-`);
-
 const UpdatePostMutation = graphql(`
   mutation UpdatePost($id: ID!, $input: UpdatePostInput!) {
     updatePost(id: $id, input: $input) {
@@ -133,6 +125,7 @@ export function PostCard({ post }: { post: Post }) {
 
   const [editing, setEditing] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   if (editing) {
     return (
@@ -162,6 +155,7 @@ export function PostCard({ post }: { post: Post }) {
           post={post}
           hasCover={post.imageUrls.length > 0}
           onOpenComments={() => setSheetOpen(true)}
+          onOpenShare={() => setShareOpen(true)}
         />
       </article>
       <CommentSheet
@@ -169,6 +163,13 @@ export function PostCard({ post }: { post: Post }) {
         open={sheetOpen}
         onClose={() => setSheetOpen(false)}
       />
+      {shareOpen && (
+        <ShareToDirectSheet
+          postId={post.id}
+          open
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </>
   );
 }
@@ -237,40 +238,17 @@ function PostActions({
   post,
   hasCover,
   onOpenComments,
+  onOpenShare,
 }: {
   post: Post;
   hasCover: boolean;
   onOpenComments: () => void;
+  onOpenShare: () => void;
 }) {
   const [like] = useMutation(LikeMutation);
   const [unlike] = useMutation(UnlikeMutation);
   const [bookmark] = useMutation(BookmarkMutation);
   const [unbookmark] = useMutation(UnbookmarkMutation);
-  const [share, { loading: sharing }] = useMutation(SharePostMutation);
-
-  const onShare = async () => {
-    if (sharing) return;
-    const shareUrl =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/u/${post.author.username}`
-        : `/u/${post.author.username}`;
-    try {
-      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-      }
-    } catch {
-      // 클립보드 실패는 무시 — 카운트는 그대로 증가
-    }
-    await share({
-      variables: { postId: post.id },
-      optimisticResponse: {
-        sharePost: {
-          id: post.id,
-          shareCount: post.shareCount + 1,
-        },
-      },
-    });
-  };
 
   const toggleLike = () => {
     if (post.viewerHasLiked) {
@@ -350,10 +328,9 @@ function PostActions({
         </button>
         <button
           type="button"
-          aria-label="공유 (링크 복사)"
-          onClick={onShare}
-          disabled={sharing}
-          className="transition-transform active:scale-90 disabled:opacity-50"
+          aria-label="메시지로 공유"
+          onClick={onOpenShare}
+          className="transition-transform active:scale-90"
         >
           <Send className="h-[22px] w-[22px] text-[color:var(--foreground)]" />
         </button>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PlaceDraft } from "./PlacePicker";
 
 const MAP_APP_KEY = process.env.NEXT_PUBLIC_KAKAO_MAPS_APP_KEY;
+// 위치 권한 거부/실패 시 폴백 (서울시청)
+const FALLBACK_COORDS = { lat: 37.5666, lng: 126.9784 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type KakaoNS = any;
@@ -141,21 +143,34 @@ export function MapPicker({
     if (!open || configMissing) return;
     setError(null);
     if (!("geolocation" in navigator)) {
-      setError("이 브라우저에서는 위치를 가져올 수 없어요.");
-      return;
+      setCoords(FALLBACK_COORDS);
+      setError("이 브라우저에서는 위치를 가져올 수 없어 서울시청 기준으로 검색해요.");
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          setCoords(FALLBACK_COORDS);
+          setError("위치 권한이 없어 서울시청 기준으로 검색해요. 검색어로 다른 지역도 찾을 수 있어요.");
+        },
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
+      );
     }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      },
-      (err) => setError(err.message || "위치 가져오기 실패"),
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60000 },
-    );
 
     loadKakaoSdk()
       .then(() => setSdkReady(true))
       .catch((e) => setError(e instanceof Error ? e.message : "SDK 로드 실패"));
   }, [open, configMissing]);
+
+  // 닫힐 때 맵 인스턴스 폐기: 모달이 언마운트되며 mapRef div가 사라지므로
+  // 다음에 열릴 때 새 div에 맵을 다시 그려야 한다. 안 그러면 옛 div에 묶인
+  // 인스턴스를 재사용해 지도 뷰가 빈 채로 남는다.
+  useEffect(() => {
+    if (open) return;
+    mapInstance.current = null;
+    markersRef.current = [];
+  }, [open]);
 
   // 맵 초기화
   useEffect(() => {
@@ -301,7 +316,13 @@ export function MapPicker({
             />
             <div className="flex-1 overflow-y-auto">
               {error && (
-                <p className="px-4 py-3 text-[12.5px] text-[color:var(--danger)]">
+                <p
+                  className={`px-4 py-3 text-[12.5px] ${
+                    coords
+                      ? "text-[color:var(--ink-soft)]"
+                      : "text-[color:var(--danger)]"
+                  }`}
+                >
                   {error}
                 </p>
               )}

@@ -296,7 +296,7 @@ export function PostComposer() {
           onFocus={() => setExpanded(true)}
           rows={expanded ? 4 : 1}
           placeholder={
-            username ? `${username}님, 오늘 어떤 흐름이었나요?` : "오늘 어떤 흐름이었나요?"
+            username ? `${username}님, 오늘은 어떤 일이 있었나요?` : "오늘은 어떤 일이 있었나요"
           }
           className="min-h-[34px] flex-1 resize-none rounded-lg bg-transparent px-2 py-1.5 text-[14px] outline-none placeholder:text-[color:var(--ink-soft)]/70"
         />
