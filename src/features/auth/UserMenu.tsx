@@ -5,10 +5,14 @@ import { useEffect, useRef, useState } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useQuery } from "@apollo/client/react";
 import { graphql } from "@/gql";
+import { Avatar } from "@/features/messages/Avatar";
 
-const IncomingFollowRequestCountQuery = graphql(`
-  query IncomingFollowRequestCount {
-    incomingFollowRequestCount
+const MeAvatarQuery = graphql(`
+  query MeAvatar {
+    me {
+      id
+      avatarUrl
+    }
   }
 `);
 
@@ -17,13 +21,11 @@ export function UserMenu() {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // 로그인 상태에서만 폴링. 30초 간격은 알림 즉시성과 부하의 타협 (실시간은 Phase 4).
-  const { data: badgeData } = useQuery(IncomingFollowRequestCountQuery, {
+  const { data: meData } = useQuery(MeAvatarQuery, {
     skip: status !== "authenticated",
-    pollInterval: 30_000,
-    fetchPolicy: "cache-and-network",
+    fetchPolicy: "cache-first",
   });
-  const badgeCount = badgeData?.incomingFollowRequestCount ?? 0;
+  const avatarUrl = meData?.me?.avatarUrl ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -68,22 +70,10 @@ export function UserMenu() {
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className="relative inline-flex items-center gap-2 rounded-full border border-[color:var(--rule)] py-1 pl-1 pr-2 transition-colors hover:border-[color:var(--pay)]/40"
+        className="no-scale relative inline-flex items-center gap-2 rounded-full border border-[color:var(--rule)] py-1 pl-1 pr-2 transition-colors hover:border-[color:var(--pay)]/40"
       >
-        <span className="bg-pay-gradient inline-flex h-7 w-7 items-center justify-center rounded-full p-[2px]">
-          <span className="flex h-full w-full items-center justify-center rounded-full bg-[color:var(--paper)] text-[10.5px] font-semibold">
-            {displayName.charAt(0).toUpperCase()}
-          </span>
-        </span>
+        <Avatar avatarUrl={avatarUrl} displayName={displayName} size={28} />
         <HamburgerIcon />
-        {badgeCount > 0 && (
-          <span
-            aria-label={`알림 ${badgeCount}건`}
-            className="absolute -right-1 -top-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--danger)] px-1 font-mono text-[9.5px] font-bold tabular-nums text-white shadow-sm"
-          >
-            {badgeCount > 99 ? "99+" : badgeCount}
-          </span>
-        )}
       </button>
 
       {open && (
@@ -91,13 +81,16 @@ export function UserMenu() {
           role="menu"
           className="absolute right-0 top-[calc(100%+6px)] z-30 w-56 overflow-hidden rounded-xl border border-[color:var(--rule)] bg-[color:var(--paper)] shadow-[0_18px_38px_-20px_rgba(20,12,30,0.45)]"
         >
-          <div className="border-b border-[color:var(--rule)] px-3 py-3">
-            <p className="text-[13px] font-semibold">{displayName}</p>
-            {username && (
-              <p className="text-[11.5px] text-[color:var(--ink-soft)]">
-                @{username}
-              </p>
-            )}
+          <div className="flex items-center gap-2.5 border-b border-[color:var(--rule)] px-3 py-3">
+            <Avatar avatarUrl={avatarUrl} displayName={displayName} size={36} />
+            <div className="min-w-0">
+              <p className="truncate text-[13px] font-semibold">{displayName}</p>
+              {username && (
+                <p className="truncate text-[11.5px] text-[color:var(--ink-soft)]">
+                  @{username}
+                </p>
+              )}
+            </div>
           </div>
           <Link
             href={profileHref}
@@ -107,20 +100,6 @@ export function UserMenu() {
           >
             <PersonIcon />
             프로필
-          </Link>
-          <Link
-            href="/notifications"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2.5 text-[13px] hover:bg-[color:var(--rule)]/40"
-          >
-            <BellIcon />
-            <span className="flex-1">알림</span>
-            {badgeCount > 0 && (
-              <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[color:var(--danger)] px-1 font-mono text-[9.5px] font-bold tabular-nums text-white">
-                {badgeCount > 99 ? "99+" : badgeCount}
-              </span>
-            )}
           </Link>
           <Link
             href="/bookmarks"
@@ -192,25 +171,6 @@ function PersonIcon() {
     >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
-      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
     </svg>
   );
 }

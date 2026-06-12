@@ -1,9 +1,13 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
+import { toAbsoluteMediaUrl } from "@/lib/upload";
+import { UserListModal, type ConnTab } from "./UserListModal";
 
 const ProfileQuery = graphql(`
   query Profile($username: String!) {
@@ -54,6 +58,7 @@ const UnfollowMutation = graphql(`
 
 export function ProfileView({ username }: { username: string }) {
   const { data: session } = useSession();
+  const [connTab, setConnTab] = useState<ConnTab | null>(null);
   const { data, loading, error } = useQuery(ProfileQuery, {
     variables: { username },
   });
@@ -130,8 +135,16 @@ export function ProfileView({ username }: { username: string }) {
           {user.bio && <p className="text-[13.5px] leading-snug">{user.bio}</p>}
           <dl className="mt-1 flex items-center gap-5 text-[12.5px]">
             <Stat label="게시물" value={user.postCount} />
-            <Stat label="팔로워" value={user.followerCount} />
-            <Stat label="팔로잉" value={user.followingCount} />
+            <Stat
+              label="팔로워"
+              value={user.followerCount}
+              onClick={() => setConnTab("followers")}
+            />
+            <Stat
+              label="팔로잉"
+              value={user.followingCount}
+              onClick={() => setConnTab("following")}
+            />
           </dl>
         </div>
       </section>
@@ -155,24 +168,39 @@ export function ProfileView({ username }: { username: string }) {
           <ul className="grid grid-cols-3 gap-1">
             {user.posts.map((p) => (
               <li key={p.id} className="relative aspect-square overflow-hidden bg-[color:var(--rule)]/30">
-                {p.imageUrls[0] ? (
-                  <Image
-                    src={p.imageUrls[0]}
-                    alt=""
-                    fill
-                    sizes="(max-width: 768px) 33vw, 200px"
-                    className="object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-[color:var(--ink-soft)]">
-                    {p.item || "게시물"}
-                  </div>
-                )}
+                <Link
+                  href={`/posts/${p.id}`}
+                  className="relative block h-full w-full"
+                  aria-label="게시물 상세 보기"
+                >
+                  {p.imageUrls[0] ? (
+                    <Image
+                      src={toAbsoluteMediaUrl(p.imageUrls[0])}
+                      alt=""
+                      fill
+                      sizes="(max-width: 768px) 33vw, 200px"
+                      className="object-cover transition-opacity hover:opacity-90"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center px-2 text-center text-[11px] text-[color:var(--ink-soft)]">
+                      {p.item || "게시물"}
+                    </div>
+                  )}
+                </Link>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {connTab && (
+        <UserListModal
+          username={user.username}
+          tab={connTab}
+          onTabChange={setConnTab}
+          onClose={() => setConnTab(null)}
+        />
+      )}
     </div>
   );
 }
@@ -259,13 +287,33 @@ function FollowButton({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex items-baseline gap-1.5">
+function Stat({
+  label,
+  value,
+  onClick,
+}: {
+  label: string;
+  value: number;
+  onClick?: () => void;
+}) {
+  const inner = (
+    <>
       <span className="font-mono text-[14px] font-semibold tabular-nums">
         {value.toLocaleString()}
       </span>
       <span className="text-[color:var(--ink-soft)]">{label}</span>
-    </div>
+    </>
   );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-baseline gap-1.5 transition-colors hover:text-[color:var(--pay-forest)]"
+      >
+        {inner}
+      </button>
+    );
+  }
+  return <div className="flex items-baseline gap-1.5">{inner}</div>;
 }
