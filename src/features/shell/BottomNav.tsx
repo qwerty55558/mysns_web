@@ -18,6 +18,7 @@ export function BottomNav() {
 
   const feedActive = pathname === "/home";
   const msgActive = pathname.startsWith("/messages");
+  const walletActive = pathname.startsWith("/wallet");
   const profileActive = pathname.startsWith("/u/") || pathname === "/me";
 
   return (
@@ -28,6 +29,9 @@ export function BottomNav() {
         </NavItem>
         <NavItem href="/messages" label="메시지" active={msgActive} badge={unread}>
           <ChatIcon filled={msgActive} />
+        </NavItem>
+        <NavItem href="/wallet" label="지갑" active={walletActive}>
+          <WalletIcon filled={walletActive} />
         </NavItem>
         <NavItem href="/me" label="프로필" active={profileActive}>
           <PersonIcon filled={profileActive} />
@@ -115,6 +119,26 @@ function ChatIcon({ filled }: { filled: boolean }) {
           <line x1="15.5" y1="11.5" x2="15.5" y2="11.5" />
         </>
       )}
+    </svg>
+  );
+}
+
+function WalletIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1H5.5A2.5 2.5 0 0 1 3 7.5Z" />
+      <path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H5.5A2.5 2.5 0 0 1 3 7.5Z" />
+      <circle cx="16.5" cy="13.5" r="1.2" fill={filled ? "var(--paper)" : "currentColor"} stroke="none" />
     </svg>
   );
 }

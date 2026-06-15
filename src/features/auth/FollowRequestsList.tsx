@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { graphql } from "@/gql";
+import { toAbsoluteMediaUrl } from "@/lib/upload";
 
 const IncomingFollowRequestsQuery = graphql(`
   query IncomingFollowRequests {
@@ -94,7 +95,7 @@ export function FollowRequestsList() {
             <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[12.5px] font-semibold">
               {req.requester.avatarUrl ? (
                 <Image
-                  src={req.requester.avatarUrl}
+                  src={toAbsoluteMediaUrl(req.requester.avatarUrl)}
                   alt=""
                   width={40}
                   height={40}

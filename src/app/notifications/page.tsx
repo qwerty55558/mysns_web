@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { AppShell } from "@/features/shell/AppShell";
 import { FollowRequestsList } from "@/features/auth/FollowRequestsList";
+import { NotificationsList } from "@/features/notifications/NotificationsList";
 
 export const metadata = {
   title: "Payflow — 알림",
@@ -19,6 +20,12 @@ export default async function NotificationsPage() {
           팔로우 요청
         </h2>
         <FollowRequestsList />
+      </section>
+      <section className="flex flex-col gap-2">
+        <h2 className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--ink-soft)]">
+          활동
+        </h2>
+        <NotificationsList />
       </section>
     </AppShell>
   );

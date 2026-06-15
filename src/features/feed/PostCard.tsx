@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
+import { toAbsoluteMediaUrl } from "@/lib/upload";
 import { Bookmark, Bubble, Dots, Heart, Send } from "@/components/insta-icons";
 import { PostCarousel } from "./PostCarousel";
 import { CommentSheet } from "./CommentSheet";
@@ -193,7 +194,7 @@ function PostHeader({
         <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[12px] font-semibold tracking-wide">
           {post.author.avatarUrl ? (
             <Image
-              src={post.author.avatarUrl}
+              src={toAbsoluteMediaUrl(post.author.avatarUrl)}
               alt=""
               width={36}
               height={36}
@@ -385,7 +386,7 @@ function PostActions({
         <button
           type="button"
           onClick={onOpenComments}
-          className="text-left text-[13px] leading-snug text-[color:var(--foreground)]/80 transition-colors hover:text-[color:var(--foreground)]"
+          className="no-scale text-left text-[13px] leading-snug text-[color:var(--foreground)]/80 transition-colors hover:text-[color:var(--foreground)]"
         >
           <span className="font-semibold">
             {post.previewComment.author.username}

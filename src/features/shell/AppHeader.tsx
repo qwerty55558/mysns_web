@@ -10,6 +10,26 @@ export function AppHeader() {
           Payflow
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            href="/search"
+            aria-label="검색"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[color:var(--rule)] transition-colors hover:border-[color:var(--pay)]/40"
+          >
+            <svg
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="7" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </Link>
           <NotificationsBell />
           <UserMenu />
         </div>
