@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import type { ResultOf } from "@graphql-typed-document-node/core";
 import { toAbsoluteMediaUrl } from "@/lib/upload";
+import { SendMoneyButton } from "@/features/wallet/SendMoneyButton";
 import { Avatar } from "./Avatar";
 import {
   ConversationQuery,
@@ -61,24 +62,34 @@ export function ConversationThread({ id }: { id: string }) {
   return (
     <div className="flex h-[calc(100dvh-7rem)] flex-col overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
       {participant && (
-        <Link
-          href={`/u/${participant.username}`}
-          className="flex items-center gap-2.5 border-b border-[color:var(--rule)] px-4 py-3 transition-colors hover:bg-[color:var(--rule)]/30"
-        >
-          <Avatar
-            avatarUrl={participant.avatarUrl}
-            displayName={participant.displayName}
-            size={34}
+        <div className="flex items-center gap-2.5 border-b border-[color:var(--rule)] px-4 py-3">
+          <Link
+            href={`/u/${participant.username}`}
+            className="flex min-w-0 flex-1 items-center gap-2.5 transition-colors hover:opacity-80"
+          >
+            <Avatar
+              avatarUrl={participant.avatarUrl}
+              displayName={participant.displayName}
+              size={34}
+            />
+            <div className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate text-[13.5px] font-semibold">
+                {participant.username}
+              </span>
+              <span className="truncate text-[11px] text-[color:var(--ink-soft)]">
+                {participant.displayName}
+              </span>
+            </div>
+          </Link>
+          <SendMoneyButton
+            user={{
+              id: participant.id,
+              username: participant.username,
+              displayName: participant.displayName,
+              avatarUrl: participant.avatarUrl,
+            }}
           />
-          <div className="flex flex-col leading-tight">
-            <span className="text-[13.5px] font-semibold">
-              {participant.username}
-            </span>
-            <span className="text-[11px] text-[color:var(--ink-soft)]">
-              {participant.displayName}
-            </span>
-          </div>
-        </Link>
+        </div>
       )}
 
       <div ref={scrollRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">

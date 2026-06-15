@@ -28,29 +28,73 @@ export default function AboutPage() {
           />
           <Card
             title="바로 송금"
-            body="더치페이도 답방도, 댓글에서 한 번의 탭으로. 별도 송금 앱을 켤 필요가 없습니다."
+            body="더치페이, 경조사비, 용돈 모두 댓글에서 한 번의 탭으로. 별도 송금 앱을 켤 필요가 없습니다."
           />
           <Card
             title="지갑·내역"
-            body="모든 흐름은 한 곳의 지갑으로 모입니다. 카테고리별 흐름을 한눈에 정리합니다."
+            body="모든 소비는 페이플로우로 모입니다. 항목별 소비를 한눈에 정리합니다."
           />
           <Card
-            title="신뢰감 있는 톤"
-            body="인스타 같은 친근함과 핀테크의 정확함을 함께. 디자인부터 약관 안내까지 차분하게."
+            title="나만의 피드"
+            body="기능은 같게, 느낌은 다르게. 구독을 통해 내 취향으로 피드를 꾸며보세요."
           />
         </section>
 
-        <section className="rounded-2xl border border-[color:var(--rule)] bg-[color:var(--paper)] px-6 py-7 text-[13px] text-[color:var(--foreground)]/80">
-          <p className="font-semibold text-[color:var(--foreground)]">
+        <section className="rounded-2xl border border-[color:var(--rule)] bg-[color:var(--paper)] px-6 py-7">
+          <p className="text-[13px] font-semibold text-[color:var(--foreground)]">
             현재 단계
           </p>
-          <p className="mt-1 text-[color:var(--ink-soft)]">
-            Stage 1 — 피드·로그인·가입까지 정리된 데모입니다. 송금/지갑 기능은
-            다음 단계에서 합류합니다.
-          </p>
+          <ul className="mt-3 flex flex-col gap-3">
+            <Stage
+              done
+              label="Stage 1 · 기반"
+              body="로그인·가입·세션, 디자인 시스템."
+            />
+            <Stage
+              done
+              label="Stage 2 · SNS"
+              body="영수증 게시물·피드, 좋아요·댓글·북마크, 팔로우·비공개 계정, 다이렉트 메시지, 알림, 계정·해시태그 검색."
+            />
+            <Stage
+              done
+              label="Stage 3 · 지갑·송금"
+              body="모의 잔액 지갑, 충전·출금, 친구에게 바로 송금(P2P), 거래내역. 프로필·DM에서 한 번의 탭으로."
+            />
+          </ul>
         </section>
       </div>
     </PublicShell>
+  );
+}
+
+function Stage({
+  label,
+  body,
+  done,
+}: {
+  label: string;
+  body: string;
+  done?: boolean;
+}) {
+  return (
+    <li className="flex gap-3">
+      <span
+        aria-hidden
+        className={`mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+          done
+            ? "bg-[color:var(--pay)] text-[color:var(--pay-on)]"
+            : "border border-[color:var(--rule)] text-[color:var(--ink-soft)]"
+        }`}
+      >
+        {done ? "✓" : "·"}
+      </span>
+      <div className="flex flex-col gap-0.5">
+        <p className="text-[13px] font-semibold text-[color:var(--foreground)]">
+          {label}
+        </p>
+        <p className="text-[12.5px] text-[color:var(--ink-soft)]">{body}</p>
+      </div>
+    </li>
   );
 }
 

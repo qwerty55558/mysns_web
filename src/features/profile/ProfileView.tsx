@@ -7,6 +7,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
 import { toAbsoluteMediaUrl } from "@/lib/upload";
+import { SendMoneyButton } from "@/features/wallet/SendMoneyButton";
 import { UserListModal, type ConnTab } from "./UserListModal";
 
 const ProfileQuery = graphql(`
@@ -93,7 +94,7 @@ export function ProfileView({ username }: { username: string }) {
           <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[22px] font-semibold">
             {user.avatarUrl ? (
               <Image
-                src={user.avatarUrl}
+                src={toAbsoluteMediaUrl(user.avatarUrl)}
                 alt=""
                 width={80}
                 height={80}
@@ -123,13 +124,23 @@ export function ProfileView({ username }: { username: string }) {
               </p>
             </div>
             {canInteract && (
-              <FollowButton
-                userId={user.id}
-                isFollowing={user.viewerIsFollowing}
-                hasRequested={user.viewerHasRequestedFollow}
-                isTargetPrivate={user.privateAccount}
-                followerCount={user.followerCount}
-              />
+              <div className="flex shrink-0 items-center gap-2">
+                <SendMoneyButton
+                  user={{
+                    id: user.id,
+                    username: user.username,
+                    displayName: user.displayName,
+                    avatarUrl: user.avatarUrl,
+                  }}
+                />
+                <FollowButton
+                  userId={user.id}
+                  isFollowing={user.viewerIsFollowing}
+                  hasRequested={user.viewerHasRequestedFollow}
+                  isTargetPrivate={user.privateAccount}
+                  followerCount={user.followerCount}
+                />
+              </div>
             )}
           </div>
           {user.bio && <p className="text-[13.5px] leading-snug">{user.bio}</p>}

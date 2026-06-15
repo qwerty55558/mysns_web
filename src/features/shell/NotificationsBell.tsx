@@ -5,15 +5,15 @@ import { useSession } from "next-auth/react";
 import { useQuery } from "@apollo/client/react";
 import { graphql } from "@/gql";
 
-const IncomingFollowRequestCountQuery = graphql(`
-  query IncomingFollowRequestCount {
-    incomingFollowRequestCount
+const UnreadNotificationCountQuery = graphql(`
+  query UnreadNotificationCount {
+    unreadNotificationCount
   }
 `);
 
 export function NotificationsBell() {
   const { status } = useSession();
-  const { data } = useQuery(IncomingFollowRequestCountQuery, {
+  const { data } = useQuery(UnreadNotificationCountQuery, {
     skip: status !== "authenticated",
     pollInterval: 30_000,
     fetchPolicy: "cache-and-network",
@@ -21,7 +21,7 @@ export function NotificationsBell() {
 
   if (status !== "authenticated") return null;
 
-  const count = data?.incomingFollowRequestCount ?? 0;
+  const count = data?.unreadNotificationCount ?? 0;
 
   return (
     <Link

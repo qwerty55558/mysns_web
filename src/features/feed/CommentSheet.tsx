@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
+import { toAbsoluteMediaUrl } from "@/lib/upload";
 import { Heart } from "@/components/insta-icons";
 
 const PAGE = 20;
@@ -355,7 +356,7 @@ export function CommentRow({
         <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[10.5px] font-semibold">
           {comment.author.avatarUrl ? (
             <Image
-              src={comment.author.avatarUrl}
+              src={toAbsoluteMediaUrl(comment.author.avatarUrl)}
               alt=""
               width={32}
               height={32}

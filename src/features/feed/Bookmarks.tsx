@@ -114,7 +114,7 @@ export function Bookmarks() {
             아직 북마크한 게시물이 없습니다.
           </p>
           <p className="text-[12px] text-[color:var(--ink-soft)]/70">
-            마음에 드는 흐름은 북마크해서 다시 꺼내볼 수 있어요.
+            마음에 드는 게시글은 북마크해서 다시 꺼내볼 수 있어요.
           </p>
         </div>
       )}
