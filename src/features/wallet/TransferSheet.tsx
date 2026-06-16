@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@apollo/client/react";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import { RecipientPicker, type Recipient } from "@/features/messages/RecipientPicker";
 import { Avatar } from "@/features/messages/Avatar";
+import { SendMessageMutation } from "@/features/messages/queries";
 import { MyWalletQuery, TransferMutation } from "./queries";
 import { SheetShell } from "./SheetShell";
 import { formatWon } from "./format";
@@ -25,6 +26,7 @@ export function TransferSheet({
   const [memo, setMemo] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [transfer, { loading }] = useMutation(TransferMutation);
+  const [sendMessage] = useMutation(SendMessageMutation);
 
   const value = Number(amount.replace(/[^0-9]/g, ""));
   const canSend = !!selected && value > 0 && value <= balance && !loading;
@@ -40,6 +42,20 @@ export function TransferSheet({
         },
         refetchQueries: ["MyWallet", "WalletTransactions"],
       });
+      try {
+        const note = memo.trim();
+        await sendMessage({
+          variables: {
+            input: {
+              recipientId: selected.id,
+              text: `💸 ${formatWon(value)}을 보냈어요${note ? ` · ${note}` : ""}`,
+            },
+          },
+          refetchQueries: ["Conversations"],
+        });
+      } catch {
+        // 자동 메시지 실패는 송금 결과에 영향 주지 않음 (무시)
+      }
       onClose();
     } catch (err) {
       if (CombinedGraphQLErrors.is(err) && err.errors.length > 0) {

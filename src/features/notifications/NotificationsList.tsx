@@ -31,6 +31,12 @@ const NotificationsQuery = graphql(`
         id
         content
       }
+      splitBill {
+        id
+        totalAmount
+        memo
+        status
+      }
     }
   }
 `);
@@ -60,6 +66,7 @@ type NotificationRow = {
   };
   post?: { id: string; imageUrls: string[] } | null;
   comment?: { id: string; content: string } | null;
+  splitBill?: { id: string; totalAmount: number; memo?: string | null; status: string } | null;
 };
 
 export function NotificationsList() {
@@ -209,7 +216,13 @@ export function NotificationsList() {
                 </p>
                 {n.comment?.content && (
                   <p className="mt-0.5 truncate text-[12px] text-[color:var(--ink-soft)]">
-                    “{n.comment.content}”
+                    "{n.comment.content}"
+                  </p>
+                )}
+                {n.type === "SPLIT_REQUEST" && n.splitBill && (
+                  <p className="mt-0.5 truncate text-[12px] text-[color:var(--ink-soft)]">
+                    ₩{n.splitBill.totalAmount.toLocaleString("ko-KR")}
+                    {n.splitBill.memo ? ` · ${n.splitBill.memo}` : ""}
                   </p>
                 )}
                 <p className="mt-0.5 text-[11px] text-[color:var(--ink-soft)]/70">
@@ -275,6 +288,8 @@ function rowHref(n: NotificationRow): string | null {
     case "COMMENT":
     case "COMMENT_LIKE":
       return n.post ? `/posts/${n.post.id}` : null;
+    case "SPLIT_REQUEST":
+      return "/splits";
     default:
       return null;
   }
@@ -292,6 +307,8 @@ function messageFor(type: NotificationType): string {
       return "님이 회원님의 게시물에 댓글을 남겼어요.";
     case "COMMENT_LIKE":
       return "님이 회원님의 댓글을 좋아합니다.";
+    case "SPLIT_REQUEST":
+      return "님이 1/N 정산을 요청했어요.";
     default:
       return "님의 새로운 소식이 있어요.";
   }

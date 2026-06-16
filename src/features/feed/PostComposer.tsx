@@ -5,6 +5,9 @@ import { useApolloClient, useMutation } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
 import { uploadImage } from "@/lib/upload";
+import { CreateSplitMutation } from "@/features/splits/queries";
+import { SplitParticipantPicker, type Friend } from "@/features/splits/SplitParticipantPicker";
+import { formatWon } from "@/features/wallet/format";
 import { PlacePicker, type PlaceDraft } from "./PlacePicker";
 import { searchPlaceByName } from "./kakao-place-search";
 
@@ -82,6 +85,7 @@ export function PostComposer() {
   const [place, setPlace] = useState<PlaceDraft | null>(null);
   const [images, setImages] = useState<ImageDraft[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [splitNotice, setSplitNotice] = useState<string | null>(null);
   // OCR 결과 안내 (저신뢰도 안내 + rawText 참고 표시)
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [ocrRawText, setOcrRawText] = useState<string | null>(null);
@@ -103,6 +107,11 @@ export function PostComposer() {
       for (const img of imagesRef.current) URL.revokeObjectURL(img.blobUrl);
     };
   }, []);
+
+  const [createSplit] = useMutation(CreateSplitMutation);
+  const [splitOn, setSplitOn] = useState(false);
+  const [splitParticipants, setSplitParticipants] = useState<Friend[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const [createPost, { loading: submitting }] = useMutation(CreatePostMutation, {
     update: (cache, { data }) => {
@@ -225,6 +234,9 @@ export function PostComposer() {
     setError(null);
     setOcrNotice(null);
     setOcrRawText(null);
+    setSplitOn(false);
+    setSplitParticipants([]);
+    setPickerOpen(false);
     setExpanded(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -236,6 +248,8 @@ export function PostComposer() {
     content.trim().length > 0 &&
     images.every((img) => img.status !== "failed");
 
+  const amountNum = Number(amount.replace(/[^0-9]/g, "")) || 0;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -246,6 +260,7 @@ export function PostComposer() {
       .filter((img) => img.remoteUrl)
       .map((img) => img.remoteUrl as string);
     setError(null);
+    setSplitNotice(null);
     try {
       await createPost({
         variables: {
@@ -269,7 +284,27 @@ export function PostComposer() {
           },
         },
       });
+      let splitFailed = false;
+      if (splitOn && splitParticipants.length > 0 && parsedAmount && parsedAmount > 0) {
+        try {
+          await createSplit({
+            variables: {
+              input: {
+                totalAmount: parsedAmount,
+                memo: item.trim() === "" ? null : item.trim(),
+                participants: splitParticipants.map((p) => ({ userId: p.id })),
+              },
+            },
+            refetchQueries: ["MySplitBills", "PendingSplitRequests"],
+          });
+        } catch {
+          splitFailed = true;
+        }
+      }
       reset();
+      if (splitFailed) {
+        setSplitNotice("게시는 완료됐지만 1/N 정산 요청 전송에 실패했어요. 1/N 탭에서 다시 시도해주세요.");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "게시 실패");
     }
@@ -346,6 +381,67 @@ export function PostComposer() {
 
           <PlacePicker value={place} onChange={setPlace} />
 
+          {amountNum > 0 && (
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <span
+                  role="checkbox"
+                  aria-checked={splitOn}
+                  tabIndex={0}
+                  onClick={() => {
+                    if (splitOn) {
+                      setSplitOn(false);
+                      setSplitParticipants([]);
+                    } else {
+                      setSplitOn(true);
+                      setPickerOpen(true);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      if (splitOn) {
+                        setSplitOn(false);
+                        setSplitParticipants([]);
+                      } else {
+                        setSplitOn(true);
+                        setPickerOpen(true);
+                      }
+                    }
+                  }}
+                  className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${
+                    splitOn
+                      ? "border-transparent bg-pay text-[color:var(--pay-on)]"
+                      : "border-[color:var(--rule)] text-transparent"
+                  }`}
+                >
+                  ✓
+                </span>
+                <span className="text-[13px] text-[color:var(--foreground)]">1/N 정산하기</span>
+              </label>
+              {splitOn && splitParticipants.length > 0 && (
+                <div className="flex items-center gap-2 rounded-full border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-1.5">
+                  <span className="flex-1 truncate text-[12.5px] text-[color:var(--ink-soft)]">
+                    {splitParticipants.length}명에게 1/N · 1인당{" "}
+                    {formatWon(Math.floor(amountNum / (splitParticipants.length + 1)))}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPickerOpen(true)}
+                    className="shrink-0 text-[11.5px] font-medium text-[color:var(--pay-forest)] hover:text-[color:var(--pay)]"
+                  >
+                    수정
+                  </button>
+                </div>
+              )}
+              {splitOn && splitParticipants.length === 0 && (
+                <p className="text-[12px] text-[color:var(--ink-soft)]">
+                  정산할 친구를 선택해주세요.
+                </p>
+              )}
+            </div>
+          )}
+
           {ocrNotice && (
             <div className="flex flex-col gap-1 rounded-md border border-[color:var(--rule)] bg-[color:var(--rule)]/20 px-3 py-2">
               <p className="text-[11.5px] text-[color:var(--ink-soft)]">
@@ -365,6 +461,33 @@ export function PostComposer() {
           {error && (
             <p className="text-[12px] text-[color:var(--danger)]">{error}</p>
           )}
+        </div>
+      )}
+
+      {pickerOpen && (
+        <SplitParticipantPicker
+          amount={amountNum}
+          initialSelected={splitParticipants}
+          onConfirm={(list) => {
+            setSplitParticipants(list);
+            setSplitOn(list.length > 0);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {splitNotice && (
+        <div className="flex items-center gap-2 border-t border-[color:var(--rule)] bg-[color:var(--danger)]/5 px-4 py-2">
+          <p role="alert" className="flex-1 text-[12px] text-[color:var(--danger)]">{splitNotice}</p>
+          <button
+            type="button"
+            onClick={() => setSplitNotice(null)}
+            aria-label="닫기"
+            className="shrink-0 text-[color:var(--ink-soft)] hover:text-[color:var(--foreground)]"
+          >
+            ✕
+          </button>
         </div>
       )}
 

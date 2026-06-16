@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@apollo/client/react";
 import { UnreadMessageCountQuery } from "@/features/messages/queries";
+import { PendingSplitRequestsQuery } from "@/features/splits/queries";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -16,9 +17,18 @@ export function BottomNav() {
   });
   const unread = data?.unreadMessageCount ?? 0;
 
+  const { data: splitData } = useQuery(PendingSplitRequestsQuery, {
+    variables: { limit: 50, offset: 0 },
+    skip: status !== "authenticated",
+    pollInterval: 30_000,
+    fetchPolicy: "cache-and-network",
+  });
+  const pendingSplits = splitData?.pendingSplitRequests.length ?? 0;
+
   const feedActive = pathname === "/home";
   const msgActive = pathname.startsWith("/messages");
   const walletActive = pathname.startsWith("/wallet");
+  const splitsActive = pathname.startsWith("/splits");
   const profileActive = pathname.startsWith("/u/") || pathname === "/me";
 
   return (
@@ -32,6 +42,9 @@ export function BottomNav() {
         </NavItem>
         <NavItem href="/wallet" label="지갑" active={walletActive}>
           <WalletIcon filled={walletActive} />
+        </NavItem>
+        <NavItem href="/splits" label="1/N" active={splitsActive} badge={pendingSplits}>
+          <SplitIcon filled={splitsActive} />
         </NavItem>
         <NavItem href="/me" label="프로필" active={profileActive}>
           <PersonIcon filled={profileActive} />
@@ -139,6 +152,27 @@ function WalletIcon({ filled }: { filled: boolean }) {
       <path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v1H5.5A2.5 2.5 0 0 1 3 7.5Z" />
       <path d="M3 7.5V17a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7H5.5A2.5 2.5 0 0 1 3 7.5Z" />
       <circle cx="16.5" cy="13.5" r="1.2" fill={filled ? "var(--paper)" : "currentColor"} stroke="none" />
+    </svg>
+  );
+}
+
+function SplitIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <circle cx="7" cy="8" r="3" />
+      <circle cx="17" cy="8" r="3" />
+      <path d="M2.5 20a4.5 4.5 0 0 1 9 0" fill="none" />
+      <path d="M12.5 20a4.5 4.5 0 0 1 9 0" fill="none" />
     </svg>
   );
 }
