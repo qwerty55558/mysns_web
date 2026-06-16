@@ -14,7 +14,6 @@ export default async function NewMessagePage() {
 
   return (
     <AppShell
-      showNav={false}
       mainClassName="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-5 py-6"
     >
       <div className="flex items-center gap-3">

@@ -5,6 +5,7 @@ export const MyWalletQuery = graphql(`
     myWallet {
       id
       balance
+      held
     }
   }
 `);

@@ -27,6 +27,7 @@ export function WalletView() {
   const [mode, setMode] = useState<Mode>(null);
 
   const balance = walletRes.data?.myWallet?.balance ?? 0;
+  const held = walletRes.data?.myWallet?.held ?? 0;
   const txs = txRes.data?.walletTransactions ?? [];
 
   return (
@@ -34,6 +35,11 @@ export function WalletView() {
       <section className="bg-pay-gradient relative overflow-hidden rounded-3xl p-5 text-[color:var(--pay-on)] shadow-[0_18px_40px_-22px_rgba(3,199,90,0.8)]">
         <p className="text-[11px] uppercase tracking-[0.2em] opacity-80">내 잔액</p>
         <p className="mt-1 text-[32px] font-bold tabular-nums">{formatWon(balance)}</p>
+        {held > 0 && (
+          <p className="mt-1 text-[12px] opacity-90 tabular-nums">
+            1/N 예치 중 {formatWon(held)} · 정산 완료 전까지 묶여요
+          </p>
+        )}
         <div className="mt-4 flex gap-2">
           <ActionButton onClick={() => setMode("transfer")} primary>
             송금
@@ -58,7 +64,11 @@ export function WalletView() {
         {txs.length > 0 && (
           <ul className="flex flex-col divide-y divide-[color:var(--rule)] overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
             {txs.map((tx) => {
-              const positive = tx.type === "TOPUP" || tx.type === "TRANSFER_IN";
+              const positive =
+                tx.type === "TOPUP" ||
+                tx.type === "TRANSFER_IN" ||
+                tx.type === "SPLIT_REFUND" ||
+                tx.type === "SPLIT_SETTLE_IN";
               return (
                 <li key={tx.id} className="flex items-center gap-3 px-4 py-3">
                   {tx.counterparty ? (
@@ -253,6 +263,14 @@ function txLabel(tx: {
       return tx.counterparty ? `${tx.counterparty.username}님에게 송금` : "송금";
     case "TRANSFER_IN":
       return tx.counterparty ? `${tx.counterparty.username}님이 보냄` : "입금";
+    case "SPLIT_HOLD":
+      return "1/N 예치";
+    case "SPLIT_REFUND":
+      return "1/N 취소 환불";
+    case "SPLIT_SETTLE_IN":
+      return tx.counterparty
+        ? `${tx.counterparty.username}님 1/N 정산`
+        : "1/N 정산";
     default:
       return "거래";
   }

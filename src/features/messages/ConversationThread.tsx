@@ -60,7 +60,7 @@ export function ConversationThread({ id }: { id: string }) {
     );
 
   return (
-    <div className="flex h-[calc(100dvh-7rem)] flex-col overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
+    <div className="flex h-[calc(100dvh-12rem)] flex-col overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
       {participant && (
         <div className="flex items-center gap-2.5 border-b border-[color:var(--rule)] px-4 py-3">
           <Link

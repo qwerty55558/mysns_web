@@ -17,8 +17,7 @@ export default async function ConversationPage({ params }: Props) {
 
   return (
     <AppShell
-      showNav={false}
-      mainClassName="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 px-5 py-4"
+      mainClassName="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 px-5 pt-4"
     >
       <Link
         href="/messages"
