@@ -12,7 +12,6 @@ export function BottomNav() {
   const { status } = useSession();
   const { data } = useQuery(UnreadMessageCountQuery, {
     skip: status !== "authenticated",
-    pollInterval: 30_000,
     fetchPolicy: "cache-and-network",
   });
   const unread = data?.unreadMessageCount ?? 0;

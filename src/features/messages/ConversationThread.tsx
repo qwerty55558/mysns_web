@@ -26,7 +26,6 @@ export function ConversationThread({ id }: { id: string }) {
   const { data, loading, error, refetch } = useQuery(MessagesQuery, {
     variables: { conversationId: id, limit: PAGE, offset: 0 },
     fetchPolicy: "cache-and-network",
-    pollInterval: 7_000,
   });
   const [markRead] = useMutation(MarkConversationReadMutation);
 

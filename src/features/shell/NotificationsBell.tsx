@@ -15,7 +15,6 @@ export function NotificationsBell() {
   const { status } = useSession();
   const { data } = useQuery(UnreadNotificationCountQuery, {
     skip: status !== "authenticated",
-    pollInterval: 30_000,
     fetchPolicy: "cache-and-network",
   });
 
