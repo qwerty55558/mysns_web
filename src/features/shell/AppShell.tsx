@@ -1,6 +1,7 @@
 import { AppHeader } from "./AppHeader";
 import { BottomNav } from "./BottomNav";
 import { PageSlide } from "./PageSlide";
+import { RealtimeBridge } from "./RealtimeBridge";
 
 /**
  * 인증 페이지 공용 셸 — 고정 헤더(로고 + 알림 + 햄버거) + 슬라이드 전환 본문 +
@@ -17,6 +18,7 @@ export function AppShell({
 }) {
   return (
     <div className="flex min-h-dvh flex-col items-center bg-[color:var(--background)] text-[color:var(--foreground)]">
+      <RealtimeBridge />
       <AppHeader />
       <PageSlide>
         <main className={`${mainClassName}${showNav ? " pb-24" : ""}`}>
