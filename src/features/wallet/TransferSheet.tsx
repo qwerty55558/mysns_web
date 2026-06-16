@@ -51,7 +51,9 @@ export function TransferSheet({
               text: `💸 ${formatWon(value)}을 보냈어요${note ? ` · ${note}` : ""}`,
             },
           },
-          refetchQueries: ["Conversations"],
+          // "Messages"도 포함 → DM 대화창이 열려 있으면 active Messages 쿼리가
+          // 즉시 refetch 되어 송금 메시지가 바로 뜬다(7초 폴링 대기 X).
+          refetchQueries: ["Conversations", "Messages"],
         });
       } catch {
         // 자동 메시지 실패는 송금 결과에 영향 주지 않음 (무시)
