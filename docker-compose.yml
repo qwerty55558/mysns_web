@@ -8,13 +8,18 @@
 # 사전 준비:
 #   docker network create payflow-net      # 한 번만
 #
-# 필요한 변수(.env 또는 셸):
+# 변수는 .env.prod 에서 주입 (템플릿: .env.example):
 #   NEXT_PUBLIC_GRAPHQL_ENDPOINT   = https://payflow.clauminirockpt.me/graphql  (빌드 시 번들에 인라인)
 #   NEXT_PUBLIC_KAKAO_MAPS_APP_KEY = 카카오맵 JS 키 (빌드 시 인라인)
-#   AUTH_SECRET                    = Auth.js 세션 키 (서버 런타임)
+#   AUTH_SECRET / AUTH_TRUST_HOST  = 서버 런타임
 #
-#   docker compose build   # NEXT_PUBLIC_* 가 이 시점에 필요
-#   docker compose up -d
+# (A) GHCR 이미지 pull 배포 — 서버 권장:
+#   docker compose --env-file .env.prod pull
+#   docker compose --env-file .env.prod up -d
+#
+# (B) 로컬에서 직접 빌드:
+#   docker compose --env-file .env.prod build   # NEXT_PUBLIC_* 가 이 시점에 필요
+#   docker compose --env-file .env.prod up -d
 
 networks:
   payflow-net:
@@ -28,7 +33,7 @@ services:
       args:
         NEXT_PUBLIC_GRAPHQL_ENDPOINT: ${NEXT_PUBLIC_GRAPHQL_ENDPOINT}
         NEXT_PUBLIC_KAKAO_MAPS_APP_KEY: ${NEXT_PUBLIC_KAKAO_MAPS_APP_KEY}
-    image: payflow-web:latest
+    image: ghcr.io/qwerty55558/payflow-web:latest
     platform: linux/amd64
     restart: unless-stopped
     networks:
