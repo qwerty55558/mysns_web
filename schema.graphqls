@@ -1,0 +1,494 @@
+scalar DateTime
+
+enum ThemePreset {
+    OCEAN
+    SUNSET
+    FOREST
+    AURORA
+    MONO
+    ROSE
+}
+
+enum NameEmphasis {
+    NONE
+    GRADIENT
+    GLOW
+    NEON
+    SPARKLE
+}
+
+enum NameFont {
+    DEFAULT
+    UNBOUNDED
+    SYNE
+    BLACK_HAN_SANS
+    SPACE_GROTESK
+}
+
+enum SubscriptionStatus {
+    ACTIVE
+    CANCELLED
+    EXPIRED
+}
+
+enum SubscriptionPlan {
+    MONTHLY
+    YEARLY
+}
+
+type Subscription {
+    id: ID!
+    status: SubscriptionStatus!
+    plan: SubscriptionPlan!
+    theme: ThemePreset!
+    nameEmphasis: NameEmphasis!
+    nameFont: NameFont!
+    price: Int!
+    autoRenew: Boolean!
+    startedAt: DateTime!
+    currentPeriodEnd: DateTime!
+}
+
+enum NotificationType {
+    FOLLOW
+    FOLLOW_REQUEST
+    FOLLOW_ACCEPTED
+    POST_LIKE
+    COMMENT
+    COMMENT_LIKE
+    SPLIT_REQUEST
+}
+
+type Notification {
+    id: ID!
+    type: NotificationType!
+    actor: User!
+    post: Post
+    comment: Comment
+    splitBill: SplitBill
+    read: Boolean!
+    createdAt: DateTime!
+}
+
+type Query {
+    me: User
+    user(id: ID!): User
+    userByUsername(username: String!): User
+    post(id: ID!): Post
+    feed(limit: Int! = 20, offset: Int! = 0): [Post!]!
+    bookmarks(limit: Int! = 20, offset: Int! = 0): [Post!]!
+    analyzeReceipt(imageUrl: String!): ReceiptAnalysis
+
+    # Search
+    # 유저 검색 (username/displayName 부분일치, 팔로워순).
+    searchUsers(query: String!, limit: Int! = 20, offset: Int! = 0): [User!]!
+    # 게시물/해시태그 검색 (content/tag/item 부분일치, 선행 # 무시, 최신순).
+    searchPosts(query: String!, limit: Int! = 20, offset: Int! = 0): [Post!]!
+
+    # 비공개 계정에서 들어온 팔로우 요청. 본인 받은 것만 노출.
+    incomingFollowRequests(limit: Int! = 20, offset: Int! = 0): [FollowRequest!]!
+    # 내가 보낸 팔로우 요청 (pending 만).
+    outgoingFollowRequests(limit: Int! = 20, offset: Int! = 0): [FollowRequest!]!
+    # 헤더 뱃지용. 미응답 받은 요청 수.
+    incomingFollowRequestCount: Int!
+
+    # Notifications
+    notifications(limit: Int! = 20, offset: Int! = 0): [Notification!]!
+    unreadNotificationCount: Int!
+
+    # Direct Messages
+    # 내 대화 목록 (최근 활동순).
+    conversations(limit: Int! = 20, offset: Int! = 0): [Conversation!]!
+    # 대화 단건 (참여자만).
+    conversation(id: ID!): Conversation
+    # 특정 상대와의 기존 대화 (없으면 null). 상대 프로필/공유 시 사용.
+    conversationWith(userId: ID!): Conversation
+    # 대화의 메시지 (최신순). 화면에선 역순으로 표시.
+    messages(conversationId: ID!, limit: Int! = 30, offset: Int! = 0): [Message!]!
+    # 헤더 뱃지용. 안읽은 메시지 총합.
+    unreadMessageCount: Int!
+
+    # Wallet (모의 잔액)
+    # 내 지갑 (최초 조회 시 자동 생성 + 시작 잔액 충전).
+    myWallet: Wallet!
+    # 내 거래내역 (최신순).
+    walletTransactions(limit: Int! = 20, offset: Int! = 0): [WalletTransaction!]!
+
+    # N빵(더치페이) 정산
+    # 정산 상세 (개설자 또는 참가자만 조회 가능).
+    splitBill(id: ID!): SplitBill
+    # 내가 개설한 정산 목록 (최신순).
+    mySplitBills(limit: Int! = 20, offset: Int! = 0): [SplitBill!]!
+    # 내가 연관된(개설/참가) 정산 히스토리 — 전체 상태, 최신순. 최근 일주일은 첫 페이지, 더보기는 offset 증가.
+    settlementHistory(limit: Int! = 20, offset: Int! = 0): [SplitBill!]!
+    # 내가 응답 대기 중인 정산 요청 (최신순).
+    pendingSplitRequests(limit: Int! = 20, offset: Int! = 0): [SplitParticipant!]!
+
+    # 구독 (프리미엄 멤버십)
+    # 내 구독 정보 (구독 중이 아니면 null).
+    mySubscription: Subscription
+}
+
+type ReceiptAnalysis {
+    amount: Int
+    item: String
+    tag: String
+    placeName: String
+    rawText: String!
+    confidence: Float!
+}
+
+type Mutation {
+    # Auth
+    login(input: LoginInput!): AuthPayload!
+    register(input: RegisterInput!): AuthPayload!
+    refresh(refreshToken: String!): AuthPayload!
+
+    # Post
+    createPost(input: CreatePostInput!): Post!
+    updatePost(id: ID!, input: UpdatePostInput!): Post!
+    deletePost(id: ID!): Boolean!
+
+    # Post interactions
+    likePost(postId: ID!): Post!
+    unlikePost(postId: ID!): Post!
+    bookmarkPost(postId: ID!): Post!
+    unbookmarkPost(postId: ID!): Post!
+    sharePost(postId: ID!): Post!
+
+    # Comment
+    addComment(input: CreateCommentInput!): Comment!
+    updateComment(id: ID!, input: UpdateCommentInput!): Comment!
+    deleteComment(id: ID!): Boolean!
+    likeComment(id: ID!): Comment!
+    unlikeComment(id: ID!): Comment!
+
+    # Follow
+    # target이 public → 즉시 follow. target이 private → FollowRequest 생성 (반환 User.viewerHasRequestedFollow = true).
+    followUser(id: ID!): User!
+    unfollowUser(id: ID!): User!
+    # 내가 보낸 요청 취소 (FollowRequest.id 또는 target user id 어느 쪽이든 받게 — id로 통일)
+    cancelFollowRequest(id: ID!): Boolean!
+    # 내가 받은 요청 처리 (id = FollowRequest.id). accept는 Follow 생성 후 requester User 반환.
+    acceptFollowRequest(id: ID!): User!
+    rejectFollowRequest(id: ID!): Boolean!
+
+    # Profile
+    updateMe(input: UpdateMeInput!): User!
+
+    # Notifications
+    markNotificationRead(id: ID!): Boolean!
+    markAllNotificationsRead: Boolean!
+
+    # Direct Messages
+    # 텍스트 또는 게시물 공유 전송. 대화가 없으면 생성. sharedPostId가 있으면 그 게시물 shareCount 증가.
+    sendMessage(input: SendMessageInput!): Message!
+    # 대화를 읽음 처리 (안읽음 뱃지 해제).
+    markConversationRead(conversationId: ID!): Conversation!
+
+    # Wallet / 송금 (모의 잔액)
+    # 잔액 충전.
+    topUpWallet(amount: Int!, memo: String): Wallet!
+    # 잔액 출금.
+    withdrawWallet(amount: Int!, memo: String): Wallet!
+    # 유저간 P2P 송금. 보낸 사람 거래(TRANSFER_OUT) 반환.
+    transfer(input: TransferInput!): WalletTransaction!
+
+    # N빵(더치페이) 정산 생성. 태그된 유저에게 요청이 가고, 수락 시 각자 몫이 개설자에게 송금됨.
+    createSplit(input: CreateSplitInput!): SplitBill!
+    # 정산 요청 수락 — 내 몫을 개설자에게 송금.
+    acceptSplit(splitBillId: ID!): SplitParticipant!
+    # 정산 요청 거절.
+    declineSplit(splitBillId: ID!): SplitParticipant!
+    # 정산 취소 (개설자만, 진행 중일 때).
+    cancelSplit(splitBillId: ID!): SplitBill!
+
+    # 구독 (프리미엄 멤버십)
+    # 구독 신청 (신규 또는 재활성화). 지갑에서 요금 차감.
+    subscribe(input: SubscribeInput!): Subscription!
+    # 구독 테마 변경 (ACTIVE 구독자만).
+    changeSubscriptionTheme(theme: ThemePreset!): Subscription!
+    # 이름 강조효과 변경 (ACTIVE 구독자만).
+    changeNameEmphasis(emphasis: NameEmphasis!): Subscription!
+    # 이름 폰트 변경 (ACTIVE 구독자만).
+    changeNameFont(font: NameFont!): Subscription!
+    # 구독 해지 (자동 갱신 비활성화 — 기간 만료 시 EXPIRED 전환).
+    cancelSubscription: Subscription!
+}
+
+enum WalletTransactionType {
+    TOPUP
+    WITHDRAW
+    TRANSFER_OUT
+    TRANSFER_IN
+    SPLIT_HOLD
+    SPLIT_REFUND
+    SPLIT_SETTLE_IN
+    SUBSCRIPTION_CHARGE
+}
+
+type Wallet {
+    id: ID!
+    balance: Int!
+    # 정산 완료 전까지 묶인(예치된) 잔액 — 지출 불가.
+    held: Int!
+    owner: User!
+    createdAt: DateTime!
+}
+
+type WalletTransaction {
+    id: ID!
+    type: WalletTransactionType!
+    amount: Int!
+    balanceAfter: Int!
+    # 송금 상대 (충전/출금은 null).
+    counterparty: User
+    memo: String
+    createdAt: DateTime!
+}
+
+input TransferInput {
+    recipientId: ID!
+    amount: Int!
+    memo: String
+}
+
+enum SplitBillStatus {
+    OPEN
+    SETTLED
+    CANCELLED
+}
+
+enum SplitParticipantStatus {
+    PENDING
+    ACCEPTED
+    DECLINED
+}
+
+# N빵(더치페이) 정산 요청.
+type SplitBill {
+    id: ID!
+    creator: User!
+    totalAmount: Int!
+    memo: String
+    status: SplitBillStatus!
+    participants: [SplitParticipant!]!
+    createdAt: DateTime!
+}
+
+type SplitParticipant {
+    id: ID!
+    bill: SplitBill!
+    user: User!
+    percent: Int!
+    shareAmount: Int!
+    # 개설자 본인 여부(표시용, 실제 차감 없음).
+    isCreator: Boolean!
+    status: SplitParticipantStatus!
+    respondedAt: DateTime
+}
+
+input CreateSplitInput {
+    totalAmount: Int!
+    memo: String
+    # 개설자 본인 비율(%, 생략 시 균등 분배 대상). 개설자 몫은 표시만 되고 실제 차감되지 않음.
+    creatorPercent: Int
+    # 태그된 정산 대상(개설자 제외). percent 생략 시 균등 분배.
+    participants: [SplitParticipantInput!]!
+}
+
+input SplitParticipantInput {
+    userId: ID!
+    percent: Int
+}
+
+type User {
+    id: ID!
+    username: String!
+    displayName: String!
+    bio: String
+    avatarUrl: String
+    createdAt: DateTime!
+    postCount: Int!
+    followerCount: Int!
+    followingCount: Int!
+    privateAccount: Boolean!
+    viewerIsFollowing: Boolean!
+    # 내가 이 사용자에게 follow request를 보냈고 아직 응답 대기 중인지
+    viewerHasRequestedFollow: Boolean!
+    posts(limit: Int! = 20, offset: Int! = 0): [Post!]!
+    bookmarkedPosts(limit: Int! = 20, offset: Int! = 0): [Post!]!
+    # 내가 팔로우하는 사용자 목록 (DM 수신자 picker / 팔로잉 목록).
+    following(limit: Int! = 30, offset: Int! = 0): [User!]!
+    # 나를 팔로우하는 사용자 목록 (팔로워 목록).
+    followers(limit: Int! = 30, offset: Int! = 0): [User!]!
+    # 구독 여부 (ACTIVE 구독자이면 true).
+    isSubscriber: Boolean!
+    # 현재 활성 테마 (구독자 아니면 null).
+    activeTheme: ThemePreset
+    # 현재 활성 이름 강조효과 (구독자 아니면 null).
+    activeEmphasis: NameEmphasis
+    # 현재 활성 이름 폰트 (구독자 아니면 null).
+    activeFont: NameFont
+    # 구독 상세 정보 (본인만, 타인 조회 시 null).
+    subscription: Subscription
+}
+
+type FollowRequest {
+    id: ID!
+    requester: User!
+    target: User!
+    createdAt: DateTime!
+}
+
+input UpdateMeInput {
+    displayName: String
+    bio: String
+    privateAccount: Boolean
+    avatarUrl: String
+}
+
+type Post {
+    id: ID!
+    content: String!
+    author: User!
+    createdAt: DateTime!
+    updatedAt: DateTime
+    imageUrls: [String!]!
+    tag: String
+    item: String
+    amount: Int
+    place: Place
+    likeCount: Int!
+    commentCount: Int!
+    shareCount: Int!
+    viewerHasLiked: Boolean!
+    viewerHasBookmarked: Boolean!
+    previewComment: Comment
+    comments(limit: Int! = 20, offset: Int! = 0): [Comment!]!
+    likedBy(limit: Int! = 20, offset: Int! = 0): [User!]!
+    # 게시글 테마 (구독자 전용, null이면 기본 테마).
+    theme: ThemePreset
+}
+
+# 카카오 Local API 응답 (place_name, x, y, road_address_name, category_group_name, category_group_code, id)
+type Place {
+    latitude: Float!
+    longitude: Float!
+    name: String!
+    address: String
+    externalId: String
+    categoryName: String
+    categoryCode: String
+}
+
+type Comment {
+    id: ID!
+    content: String!
+    author: User!
+    post: Post!
+    createdAt: DateTime!
+    updatedAt: DateTime
+    likeCount: Int!
+    viewerHasLiked: Boolean!
+}
+
+type AuthPayload {
+    accessToken: String!
+    refreshToken: String!
+    accessTokenExpiresAt: DateTime!
+    user: User!
+}
+
+input LoginInput {
+    username: String!
+    password: String!
+}
+
+input RegisterInput {
+    username: String!
+    password: String!
+    displayName: String!
+}
+
+input CreatePostInput {
+    content: String!
+    imageUrls: [String!]
+    tag: String
+    item: String
+    amount: Int
+    place: PlaceInput
+    # 게시글 테마 (구독자 전용).
+    theme: ThemePreset
+}
+
+input UpdatePostInput {
+    content: String
+    tag: String
+    item: String
+    amount: Int
+    place: PlaceInput
+    # null = 이미지 변경 없음. [] = 모든 이미지 제거. 값 = 그 리스트로 교체.
+    # 리스트 안엔 (1) /uploads/temp/{userId}/... 또는 (2) 이 post의 기존
+    # /uploads/posts/{postId}/... URL을 섞어 보낼 수 있다.
+    imageUrls: [String!]
+    # 게시글 테마 (구독자 전용).
+    theme: ThemePreset
+}
+
+input SubscribeInput {
+    plan: SubscriptionPlan!
+    theme: ThemePreset!
+    emphasis: NameEmphasis = NONE
+    font: NameFont = DEFAULT
+    autoRenew: Boolean = true
+}
+
+input PlaceInput {
+    latitude: Float!
+    longitude: Float!
+    name: String!
+    address: String
+    externalId: String
+    categoryName: String
+    categoryCode: String
+}
+
+input CreateCommentInput {
+    postId: ID!
+    content: String!
+}
+
+input UpdateCommentInput {
+    content: String!
+}
+
+# ----------------------------------------------------------------- Direct Messages
+
+type Conversation {
+    id: ID!
+    # viewer 기준 상대방.
+    participant: User!
+    lastMessage: Message
+    # viewer의 안읽음 수.
+    unreadCount: Int!
+    updatedAt: DateTime!
+}
+
+type Message {
+    id: ID!
+    conversationId: ID!
+    sender: User!
+    # 텍스트 메시지면 채워짐.
+    text: String
+    # 게시물 공유 메시지면 채워짐.
+    sharedPost: Post
+    createdAt: DateTime!
+    viewerIsSender: Boolean!
+}
+
+input SendMessageInput {
+    recipientId: ID!
+    text: String
+    sharedPostId: ID
+}

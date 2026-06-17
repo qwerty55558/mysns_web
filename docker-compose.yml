@@ -1,0 +1,38 @@
+# Payflow 웹 배포용 compose.
+#
+# 필요한 변수는 같은 디렉터리의 .env 파일(또는 셸 환경)에서 주입된다:
+#   NEXT_PUBLIC_GRAPHQL_ENDPOINT   브라우저가 호출할 BE GraphQL 엔드포인트 (빌드 시 번들에 인라인)
+#   NEXT_PUBLIC_KAKAO_MAPS_APP_KEY 카카오맵 JS 키 (빌드 시 인라인)
+#   AUTH_SECRET                    Auth.js 세션 암호화 키 (서버 런타임)
+#   AUTH_TRUST_HOST                리버스 프록시 뒤라면 true (기본 true)
+#
+#   docker compose build   # NEXT_PUBLIC_* 가 이 시점에 필요
+#   docker compose up -d
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_GRAPHQL_ENDPOINT: ${NEXT_PUBLIC_GRAPHQL_ENDPOINT}
+        NEXT_PUBLIC_KAKAO_MAPS_APP_KEY: ${NEXT_PUBLIC_KAKAO_MAPS_APP_KEY}
+    image: payflow-web:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      AUTH_SECRET: ${AUTH_SECRET}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  # BE(별도 레포 mysns_web/be)도 같은 호스트에서 띄운다면 여기에 api 서비스를 추가하고
+  # web 에 depends_on: [api] 를 걸면 된다. NEXT_PUBLIC_GRAPHQL_ENDPOINT 는 브라우저
+  # 기준 주소여야 하므로(컨테이너 내부 dns 아님) 공개 도메인/IP 로 설정할 것.

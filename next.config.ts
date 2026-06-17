@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   /* config options here */
+  // Docker 배포용 — .next/standalone(server.js + 최소 node_modules) 생성
+  output: "standalone",
   reactCompiler: true,
   devIndicators: false,
   images: {
