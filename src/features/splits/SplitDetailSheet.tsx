@@ -19,7 +19,7 @@ import {
   timeAgo,
 } from "./format";
 
-const REFETCH = ["MySplitBills", "PendingSplitRequests", "MyWallet", "SplitBill"];
+const REFETCH = ["MySplitBills", "SettlementHistory", "PendingSplitRequests", "MyWallet", "SplitBill"];
 
 export function SplitDetailSheet({
   billId,

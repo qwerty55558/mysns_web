@@ -9,6 +9,8 @@ import { graphql } from "@/gql";
 import { toAbsoluteMediaUrl } from "@/lib/upload";
 import { SendMoneyButton } from "@/features/wallet/SendMoneyButton";
 import { UserListModal, type ConnTab } from "./UserListModal";
+import { SubscriptionEntryCard } from "@/features/subscription/SubscriptionEntryCard";
+import { EmphasizedName } from "./EmphasizedName";
 
 const ProfileQuery = graphql(`
   query Profile($username: String!) {
@@ -24,6 +26,9 @@ const ProfileQuery = graphql(`
       privateAccount
       viewerIsFollowing
       viewerHasRequestedFollow
+      activeTheme
+      activeEmphasis
+      activeFont
       posts(limit: 30, offset: 0) {
         id
         imageUrls
@@ -109,7 +114,7 @@ export function ProfileView({ username }: { username: string }) {
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-0.5">
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-semibold">{user.displayName}</h1>
+                <h1 className="text-lg font-semibold"><EmphasizedName name={user.displayName} font={user.activeFont} emphasis={user.activeEmphasis} theme={user.activeTheme} /></h1>
                 {user.privateAccount && (
                   <span
                     title="비공개 계정"
@@ -159,6 +164,8 @@ export function ProfileView({ username }: { username: string }) {
           </dl>
         </div>
       </section>
+
+      {isMe && <SubscriptionEntryCard />}
 
       <section>
         <h2 className="mb-3 text-[11px] uppercase tracking-[0.2em] text-[color:var(--ink-soft)]">

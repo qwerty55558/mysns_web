@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
+import {
+  Geist,
+  Geist_Mono,
+  Instrument_Serif,
+  Unbounded,
+  Syne,
+  Space_Grotesk,
+  Black_Han_Sans,
+} from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { ApolloProvider } from "@/lib/apollo-provider";
 import { AuthTokenBridge } from "@/features/auth/AuthTokenBridge";
@@ -22,6 +30,27 @@ const instrumentSerif = Instrument_Serif({
   style: ["normal", "italic"],
 });
 
+const unbounded = Unbounded({
+  subsets: ["latin"],
+  variable: "--font-unbounded",
+});
+
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space-grotesk",
+});
+
+const blackHanSans = Black_Han_Sans({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-black-han-sans",
+});
+
 export const metadata: Metadata = {
   title: "Payflow — Share your spend, find your flow",
   description:
@@ -38,7 +67,7 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} ${unbounded.variable} ${syne.variable} ${spaceGrotesk.variable} ${blackHanSans.variable} h-full antialiased`}
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col paper-grid">

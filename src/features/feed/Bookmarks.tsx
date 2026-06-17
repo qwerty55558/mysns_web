@@ -31,11 +31,16 @@ const BookmarksQuery = graphql(`
       shareCount
       viewerHasLiked
       viewerHasBookmarked
+      theme
       author {
         id
         username
         displayName
         avatarUrl
+        activeTheme
+        activeEmphasis
+        activeFont
+        isSubscriber
       }
       previewComment {
         id

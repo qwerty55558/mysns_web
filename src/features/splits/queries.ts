@@ -89,6 +89,38 @@ export const PendingSplitRequestsQuery = graphql(`
   }
 `);
 
+export const SettlementHistoryQuery = graphql(`
+  query SettlementHistory($limit: Int!, $offset: Int!) {
+    settlementHistory(limit: $limit, offset: $offset) {
+      id
+      totalAmount
+      memo
+      status
+      createdAt
+      creator {
+        id
+        username
+        displayName
+        avatarUrl
+      }
+      participants {
+        id
+        percent
+        shareAmount
+        isCreator
+        status
+        respondedAt
+        user {
+          id
+          username
+          displayName
+          avatarUrl
+        }
+      }
+    }
+  }
+`);
+
 export const CreateSplitMutation = graphql(`
   mutation CreateSplit($input: CreateSplitInput!) {
     createSplit(input: $input) {

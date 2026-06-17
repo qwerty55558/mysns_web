@@ -3,23 +3,27 @@
 import { useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import type { ResultOf } from "@graphql-typed-document-node/core";
+import { useSession } from "next-auth/react";
 import { Avatar } from "@/features/messages/Avatar";
 import { SplitDetailSheet } from "./SplitDetailSheet";
-import { MySplitBillsQuery, PendingSplitRequestsQuery } from "./queries";
+import { SettlementHistoryQuery, PendingSplitRequestsQuery } from "./queries";
 import { billStatusLabel, formatWon, statusTone, timeAgo } from "./format";
 
-type MyBill = ResultOf<typeof MySplitBillsQuery>["mySplitBills"][number];
+type HistoryBill = ResultOf<typeof SettlementHistoryQuery>["settlementHistory"][number];
 type PendingReq =
   ResultOf<typeof PendingSplitRequestsQuery>["pendingSplitRequests"][number];
 
 type Detail = { billId: string; role: "creator" | "participant" };
 
 export function SplitsView() {
+  const { data: session } = useSession();
+  const myId = session?.user?.id;
+
   const pendingRes = useQuery(PendingSplitRequestsQuery, {
     variables: { limit: 50, offset: 0 },
     fetchPolicy: "cache-and-network",
   });
-  const billsRes = useQuery(MySplitBillsQuery, {
+  const historyRes = useQuery(SettlementHistoryQuery, {
     variables: { limit: 30, offset: 0 },
     fetchPolicy: "cache-and-network",
   });
@@ -27,7 +31,7 @@ export function SplitsView() {
   const [detail, setDetail] = useState<Detail | null>(null);
 
   const pending = (pendingRes.data?.pendingSplitRequests ?? []).filter((r) => r.bill.status === "OPEN");
-  const bills = billsRes.data?.mySplitBills ?? [];
+  const history = historyRes.data?.settlementHistory ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,23 +73,27 @@ export function SplitsView() {
 
       <section className="flex flex-col gap-2">
         <h2 className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--ink-soft)]">
-          내가 만든 정산
+          정산 내역
         </h2>
-        {billsRes.loading && bills.length === 0 && (
+        {historyRes.loading && history.length === 0 && (
           <p className="text-sm text-[color:var(--ink-soft)]">불러오는 중…</p>
         )}
-        {!billsRes.loading && bills.length === 0 && (
+        {!historyRes.loading && history.length === 0 && (
           <p className="py-6 text-center text-sm text-[color:var(--ink-soft)]">
-            아직 만든 정산이 없어요. 게시글에 영수증을 올리고 1/N으로 정산해보세요.
+            아직 정산 내역이 없어요. 게시글에 영수증을 올리고 1/N으로 정산해보세요.
           </p>
         )}
-        {bills.length > 0 && (
+        {history.length > 0 && (
           <ul className="flex flex-col gap-2">
-            {bills.map((bill) => (
-              <BillCard
+            {history.map((bill) => (
+              <HistoryCard
                 key={bill.id}
                 bill={bill}
-                onOpen={() => setDetail({ billId: bill.id, role: "creator" })}
+                myId={myId}
+                onOpen={() => {
+                  const isCreator = bill.creator.id === myId;
+                  setDetail({ billId: bill.id, role: isCreator ? "creator" : "participant" });
+                }}
               />
             ))}
           </ul>
@@ -136,10 +144,49 @@ function PendingCard({ req, onOpen }: { req: PendingReq; onOpen: () => void }) {
   );
 }
 
-function BillCard({ bill, onOpen }: { bill: MyBill; onOpen: () => void }) {
-  const responders = bill.participants.filter((p) => !p.isCreator);
-  const accepted = responders.filter((p) => p.status === "ACCEPTED").length;
+function HistoryCard({
+  bill,
+  myId,
+  onOpen,
+}: {
+  bill: HistoryBill;
+  myId: string | undefined;
+  onOpen: () => void;
+}) {
+  const isCreator = bill.creator.id === myId;
   const tone = statusTone(bill.status);
+
+  const rightSection = isCreator ? (() => {
+    const responders = bill.participants.filter((p) => !p.isCreator);
+    const accepted = responders.filter((p) => p.status === "ACCEPTED").length;
+    return (
+      <div className="text-right">
+        <p className="text-[12.5px] font-medium tabular-nums">
+          {accepted}/{responders.length}
+        </p>
+        <p className="text-[10.5px] text-[color:var(--ink-soft)]">수락</p>
+      </div>
+    );
+  })() : (() => {
+    const mine = bill.participants.find((p) => p.user.id === myId);
+    const sublabel =
+      mine?.status === "ACCEPTED"
+        ? "보냄"
+        : mine?.status === "PENDING"
+          ? "대기"
+          : mine?.status === "DECLINED"
+            ? "거절"
+            : "내 몫";
+    return (
+      <div className="text-right">
+        <p className="text-[14px] font-semibold tabular-nums text-[color:var(--foreground)]">
+          {formatWon(mine?.shareAmount ?? 0)}
+        </p>
+        <p className="text-[10.5px] text-[color:var(--ink-soft)]">{sublabel}</p>
+      </div>
+    );
+  })();
+
   return (
     <li>
       <button
@@ -158,18 +205,16 @@ function BillCard({ bill, onOpen }: { bill: MyBill; onOpen: () => void }) {
             >
               {billStatusLabel(bill.status)}
             </span>
+            <span className="shrink-0 rounded-full bg-[color:var(--rule)]/50 px-2 py-0.5 text-[10.5px] font-medium text-[color:var(--ink-soft)]">
+              {isCreator ? "개설" : "참가"}
+            </span>
           </div>
           <p className="mt-0.5 truncate text-[11.5px] text-[color:var(--ink-soft)]">
             {bill.memo ? `${bill.memo} · ` : ""}
             {timeAgo(bill.createdAt)}
           </p>
         </div>
-        <div className="text-right">
-          <p className="text-[12.5px] font-medium tabular-nums">
-            {accepted}/{responders.length}
-          </p>
-          <p className="text-[10.5px] text-[color:var(--ink-soft)]">수락</p>
-        </div>
+        {rightSection}
       </button>
     </li>
   );
