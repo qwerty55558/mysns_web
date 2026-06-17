@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "i.pravatar.cc" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "http", hostname: "localhost", port: "8080", pathname: "/uploads/**" },
+      // 운영 — BE 업로드 이미지(nginx 같은 도메인 path 라우팅)
+      { protocol: "https", hostname: "payflow.clauminirockpt.me", pathname: "/uploads/**" },
     ],
     // Next 16에서 추가된 SSRF 방어 — 호스트네임이 private IP(127.0.0.1 포함)로 해석되면
     // 옵티마이저가 fetch 자체를 거부한다(400 "url parameter is not allowed").
