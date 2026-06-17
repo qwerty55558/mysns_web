@@ -50,6 +50,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# 단, 템플릿은 커밋 (실값 파일 .env.local/.env.prod 는 계속 무시)
+!.env.example
 
 # vercel
 .vercel

@@ -1,13 +1,29 @@
 # Payflow 웹 배포용 compose.
 #
-# 필요한 변수는 같은 디렉터리의 .env 파일(또는 셸 환경)에서 주입된다:
-#   NEXT_PUBLIC_GRAPHQL_ENDPOINT   브라우저가 호출할 BE GraphQL 엔드포인트 (빌드 시 번들에 인라인)
-#   NEXT_PUBLIC_KAKAO_MAPS_APP_KEY 카카오맵 JS 키 (빌드 시 인라인)
-#   AUTH_SECRET                    Auth.js 세션 암호화 키 (서버 런타임)
-#   AUTH_TRUST_HOST                리버스 프록시 뒤라면 true (기본 true)
+# 토폴로지: 브라우저 ─443─▶ [nginx] ──(payflow-net)──┬─▶ web:3000  (/)
+#                                                     └─▶ api:8080  (/graphql, /events, /uploads, /upload)
+# nginx·web·api 가 같은 외부 네트워크(payflow-net)에 있으면 컨테이너 이름으로 접근하므로
+# web/api 는 호스트 포트를 열 필요가 없다. nginx 컨테이너만 80/443 publish.
 #
-#   docker compose build   # NEXT_PUBLIC_* 가 이 시점에 필요
-#   docker compose up -d
+# 사전 준비:
+#   docker network create payflow-net      # 한 번만
+#
+# 변수는 .env.prod 에서 주입 (템플릿: .env.example):
+#   NEXT_PUBLIC_GRAPHQL_ENDPOINT   = https://payflow.clauminirockpt.me/graphql  (빌드 시 번들에 인라인)
+#   NEXT_PUBLIC_KAKAO_MAPS_APP_KEY = 카카오맵 JS 키 (빌드 시 인라인)
+#   AUTH_SECRET / AUTH_TRUST_HOST  = 서버 런타임
+#
+# (A) GHCR 이미지 pull 배포 — 서버 권장:
+#   docker compose --env-file .env.prod pull
+#   docker compose --env-file .env.prod up -d
+#
+# (B) 로컬에서 직접 빌드:
+#   docker compose --env-file .env.prod build   # NEXT_PUBLIC_* 가 이 시점에 필요
+#   docker compose --env-file .env.prod up -d
+
+networks:
+  payflow-net:
+    external: true
 
 services:
   web:
@@ -17,22 +33,23 @@ services:
       args:
         NEXT_PUBLIC_GRAPHQL_ENDPOINT: ${NEXT_PUBLIC_GRAPHQL_ENDPOINT}
         NEXT_PUBLIC_KAKAO_MAPS_APP_KEY: ${NEXT_PUBLIC_KAKAO_MAPS_APP_KEY}
-    image: payflow-web:latest
+    image: ghcr.io/qwerty55558/payflow-web:latest
     platform: linux/amd64
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    networks:
+      - payflow-net
+    # nginx 가 네트워크 내부에서 web:3000 으로 접근하므로 호스트 포트는 불필요.
+    # nginx 없이 직접 띄워 확인하려면 아래 주석을 해제:
+    #   ports: ["3000:3000"]
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       AUTH_SECRET: ${AUTH_SECRET}
-      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}
+      AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}   # nginx(리버스 프록시) 뒤라 필수
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 20s
-
-  # BE(별도 레포 mysns_web/be)도 같은 호스트에서 띄운다면 여기에 api 서비스를 추가하고
-  # web 에 depends_on: [api] 를 걸면 된다. NEXT_PUBLIC_GRAPHQL_ENDPOINT 는 브라우저
-  # 기준 주소여야 하므로(컨테이너 내부 dns 아님) 공개 도메인/IP 로 설정할 것.
