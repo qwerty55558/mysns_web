@@ -15,6 +15,7 @@ export default async function SettingsPage() {
         @{session.user.username}
       </p>
       <section className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5">
+        <SettingsRow label="프리미엄 구독" href="/subscription" />
         <SettingsRow label="프로필 편집" href="/me" />
         <div className="border-b border-[color:var(--rule)]">
           <PrivacyToggle />

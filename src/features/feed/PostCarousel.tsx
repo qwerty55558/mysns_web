@@ -3,11 +3,13 @@
 import Image from "next/image";
 import { useRef, useState } from "react";
 import { toAbsoluteMediaUrl } from "@/lib/upload";
+import type { ThemeStyle } from "@/features/subscription/themes";
 
 type Props = {
   imageUrls: ReadonlyArray<string>;
   item?: string | null;
   amount?: number | null;
+  theme?: ThemeStyle | null;
 };
 
 const krwFormatter = new Intl.NumberFormat("ko-KR", {
@@ -16,7 +18,7 @@ const krwFormatter = new Intl.NumberFormat("ko-KR", {
   maximumFractionDigits: 0,
 });
 
-export function PostCarousel({ imageUrls, item, amount }: Props) {
+export function PostCarousel({ imageUrls, item, amount, theme }: Props) {
   const trackRef = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const total = imageUrls.length;
@@ -68,12 +70,18 @@ export function PostCarousel({ imageUrls, item, amount }: Props) {
       {(item || amount != null) && (
         <div className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-6rem)] items-center gap-1.5">
           {item && (
-            <span className="inline-flex items-center truncate rounded-full bg-white/95 px-3 py-1 text-[12px] font-medium text-[color:var(--pay-forest)] ring-1 ring-[color:var(--pay)]/25 backdrop-blur-sm">
+            <span
+              className="inline-flex items-center truncate rounded-full bg-white/95 px-3 py-1 text-[12px] font-medium text-[color:var(--pay-forest)] ring-1 ring-[color:var(--pay)]/25 backdrop-blur-sm"
+              style={theme ? { color: theme.accent, boxShadow: `0 0 0 1px ${theme.accent}40` } : undefined}
+            >
               {item}
             </span>
           )}
           {amount != null && (
-            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-3 py-1 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)] shadow-[0_6px_18px_-8px_rgba(3,199,90,0.55)]">
+            <span
+              className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-3 py-1 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)] shadow-[0_6px_18px_-8px_rgba(3,199,90,0.55)]"
+              style={theme ? { background: theme.accent, color: theme.on, boxShadow: `0 6px 18px -8px ${theme.accent}8c` } : undefined}
+            >
               {krwFormatter.format(amount)}
             </span>
           )}

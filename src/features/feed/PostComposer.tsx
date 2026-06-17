@@ -35,11 +35,16 @@ const CreatePostMutation = graphql(`
       shareCount
       viewerHasLiked
       viewerHasBookmarked
+      theme
       author {
         id
         username
         displayName
         avatarUrl
+        activeTheme
+        activeEmphasis
+        activeFont
+        isSubscriber
       }
       previewComment {
         id
@@ -112,6 +117,16 @@ export function PostComposer() {
   const [splitOn, setSplitOn] = useState(false);
   const [splitParticipants, setSplitParticipants] = useState<Friend[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
+
+  const toggleSplit = () => {
+    if (splitOn) {
+      setSplitOn(false);
+      setSplitParticipants([]);
+    } else {
+      setSplitOn(true);
+      setPickerOpen(true);
+    }
+  };
 
   const [createPost, { loading: submitting }] = useMutation(CreatePostMutation, {
     update: (cache, { data }) => {
@@ -295,7 +310,7 @@ export function PostComposer() {
                 participants: splitParticipants.map((p) => ({ userId: p.id })),
               },
             },
-            refetchQueries: ["MySplitBills", "PendingSplitRequests"],
+            refetchQueries: ["MySplitBills", "SettlementHistory", "PendingSplitRequests"],
           });
         } catch {
           splitFailed = true;
@@ -383,30 +398,15 @@ export function PostComposer() {
 
           {amountNum > 0 && (
             <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+              <label className="flex items-center gap-2 cursor-pointer select-none" onClick={toggleSplit}>
                 <span
                   role="checkbox"
                   aria-checked={splitOn}
                   tabIndex={0}
-                  onClick={() => {
-                    if (splitOn) {
-                      setSplitOn(false);
-                      setSplitParticipants([]);
-                    } else {
-                      setSplitOn(true);
-                      setPickerOpen(true);
-                    }
-                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      if (splitOn) {
-                        setSplitOn(false);
-                        setSplitParticipants([]);
-                      } else {
-                        setSplitOn(true);
-                        setPickerOpen(true);
-                      }
+                      toggleSplit();
                     }
                   }}
                   className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${

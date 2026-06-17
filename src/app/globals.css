@@ -49,6 +49,31 @@ body {
      가로 스크롤바가 깜빡이는 것을 차단. clip은 hidden과 달리 스크롤 컨테이너를
      만들지 않아 sticky 헤더에 영향이 없다. */
   overflow-x: clip;
+  /* 전역 텍스트 드래그/선택 차단 (user-select는 상속됨) */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+  /* iOS 길게 누르기 콜아웃(저장/복사 메뉴) 차단 */
+  -webkit-touch-callout: none;
+}
+
+/* 입력 요소는 선택/편집 가능해야 하므로 예외 */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+/* 이미지 — 드래그/저장/선택/상호작용 차단.
+   pointer-events:none이라 클릭은 부모(링크)로, 스와이프는 캐러셀 트랙으로 전달된다. */
+img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 @layer base {

@@ -13,6 +13,7 @@ import {
 import { TransferSheet } from "./TransferSheet";
 import { SheetShell } from "./SheetShell";
 import { formatWon } from "./format";
+import { SubscriptionEntryCard } from "@/features/subscription/SubscriptionEntryCard";
 
 const QUICK = [10_000, 50_000, 100_000, 500_000];
 
@@ -48,6 +49,8 @@ export function WalletView() {
           <ActionButton onClick={() => setMode("withdraw")}>출금</ActionButton>
         </div>
       </section>
+
+      <SubscriptionEntryCard />
 
       <section className="flex flex-col gap-2">
         <h2 className="text-[11px] uppercase tracking-[0.2em] text-[color:var(--ink-soft)]">

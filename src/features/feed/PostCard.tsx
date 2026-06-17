@@ -6,7 +6,10 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
+import type { ThemePreset, NameEmphasis, NameFont } from "@/gql/graphql";
+import { EmphasizedName } from "@/features/profile/EmphasizedName";
 import { toAbsoluteMediaUrl } from "@/lib/upload";
+import { THEME_BY_KEY, type ThemeStyle } from "@/features/subscription/themes";
 import { Bookmark, Bubble, Dots, Heart, Send } from "@/components/insta-icons";
 import { PostCarousel } from "./PostCarousel";
 import { CommentSheet } from "./CommentSheet";
@@ -18,6 +21,10 @@ type Author = {
   username: string;
   displayName: string;
   avatarUrl?: string | null;
+  activeTheme?: ThemePreset | null;
+  activeEmphasis?: NameEmphasis | null;
+  activeFont?: NameFont | null;
+  isSubscriber?: boolean | null;
 };
 
 type PreviewComment = {
@@ -52,6 +59,7 @@ type Post = {
   viewerHasBookmarked: boolean;
   author: Author;
   previewComment?: PreviewComment | null;
+  theme?: ThemePreset | null;
 };
 
 const LikeMutation = graphql(`
@@ -128,6 +136,9 @@ export function PostCard({ post }: { post: Post }) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
 
+  const themeKey = post.theme ?? post.author.activeTheme ?? null;
+  const t = themeKey ? THEME_BY_KEY[themeKey] : null;
+
   if (editing) {
     return (
       <article className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]">
@@ -141,14 +152,19 @@ export function PostCard({ post }: { post: Post }) {
 
   return (
     <>
-      <article className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]">
-        <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} />
+      <article
+        className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]"
+        style={t ? { background: t.tint } : undefined}
+      >
+        {t && <div className="h-1 w-full" style={{ background: t.gradient }} aria-hidden />}
+        <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} theme={t} />
 
         {post.imageUrls.length > 0 && (
           <PostCarousel
             imageUrls={post.imageUrls}
             item={post.item}
             amount={post.amount}
+            theme={t}
           />
         )}
 
@@ -157,6 +173,7 @@ export function PostCard({ post }: { post: Post }) {
           hasCover={post.imageUrls.length > 0}
           onOpenComments={() => setSheetOpen(true)}
           onOpenShare={() => setShareOpen(true)}
+          theme={t}
         />
       </article>
       <CommentSheet
@@ -179,17 +196,20 @@ function PostHeader({
   post,
   isMine,
   onEdit,
+  theme,
 }: {
   post: Post;
   isMine: boolean;
   onEdit: () => void;
+  theme: ThemeStyle | null;
 }) {
   return (
     <header className="flex items-center gap-2.5 px-4 py-3">
       <Link
         href={`/u/${post.author.username}`}
         aria-label={`${post.author.username} 프로필로 이동`}
-        className="bg-pay-gradient inline-flex h-9 w-9 items-center justify-center rounded-full p-[2px]"
+        className={`inline-flex h-9 w-9 items-center justify-center rounded-full p-[2px] ${theme ? "" : "bg-pay-gradient"}`}
+        style={theme ? { background: theme.gradient } : undefined}
       >
         <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[12px] font-semibold tracking-wide">
           {post.author.avatarUrl ? (
@@ -210,7 +230,7 @@ function PostHeader({
           href={`/u/${post.author.username}`}
           className="text-[13px] font-semibold transition-colors hover:text-[color:var(--pay-forest)]"
         >
-          {post.author.username}
+          <EmphasizedName name={post.author.username} font={post.author.activeFont} emphasis={post.author.activeEmphasis} theme={post.author.activeTheme} />
         </Link>
         <div className="flex items-center gap-1.5 text-[11px] text-[color:var(--ink-soft)]">
           <time dateTime={post.createdAt} title={post.createdAt}>
@@ -240,11 +260,13 @@ function PostActions({
   hasCover,
   onOpenComments,
   onOpenShare,
+  theme,
 }: {
   post: Post;
   hasCover: boolean;
   onOpenComments: () => void;
   onOpenShare: () => void;
+  theme: ThemeStyle | null;
 }) {
   const [like] = useMutation(LikeMutation);
   const [unlike] = useMutation(UnlikeMutation);
@@ -354,12 +376,18 @@ function PostActions({
       {!hasCover && (post.item || post.amount != null) && (
         <div className="flex w-fit items-center gap-1.5">
           {post.item && (
-            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)]/10 px-2.5 py-0.5 text-[12px] font-medium text-[color:var(--pay-forest)]">
+            <span
+              className="inline-flex items-center rounded-full bg-[color:var(--pay)]/10 px-2.5 py-0.5 text-[12px] font-medium text-[color:var(--pay-forest)]"
+              style={theme ? { backgroundColor: `${theme.accent}1a`, color: theme.accent } : undefined}
+            >
               {post.item}
             </span>
           )}
           {post.amount != null && (
-            <span className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)]">
+            <span
+              className="inline-flex items-center rounded-full bg-[color:var(--pay)] px-2.5 py-0.5 font-mono text-[11px] font-semibold tabular-nums text-[color:var(--pay-on)]"
+              style={theme ? { background: theme.accent, color: theme.on } : undefined}
+            >
               {formatKrw(post.amount)}
             </span>
           )}
@@ -377,7 +405,10 @@ function PostActions({
         </Link>{" "}
         <span className="text-[color:var(--foreground)]/85">{post.content}</span>
         {post.tag && (
-          <span className="ml-1.5 text-[color:var(--pay-forest)]">
+          <span
+            className="ml-1.5 text-[color:var(--pay-forest)]"
+            style={theme ? { color: theme.accent } : undefined}
+          >
             #{post.tag}
           </span>
         )}
