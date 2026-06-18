@@ -470,22 +470,35 @@ function AuthorMenu({ postId, onEdit }: { postId: string; onEdit: () => void }) 
 
   const onDelete = async () => {
     if (!window.confirm("게시물을 삭제할까요? 되돌릴 수 없습니다.")) return;
-    await deletePost({
-      variables: { id: postId },
-      update: (cache) => {
-        const id = cache.identify({ __typename: "Post", id: postId });
-        cache.modify({
-          fields: {
-            feed(existing: ReadonlyArray<{ __ref: string }> = [], { readField }) {
-              return existing.filter((ref) => readField("id", ref) !== postId);
+    try {
+      const { data } = await deletePost({
+        variables: { id: postId },
+        // 서버가 실제로 지웠을 때(deletePost === true)만 캐시에서 제거한다.
+        // false/에러인데 캐시만 비우면 "사라졌다가 새로고침하면 부활"하는 illusion 이 생긴다.
+        update: (cache, { data: result }) => {
+          if (!result?.deletePost) return;
+          const id = cache.identify({ __typename: "Post", id: postId });
+          cache.modify({
+            fields: {
+              feed(existing: ReadonlyArray<{ __ref: string }> = [], { readField }) {
+                return existing.filter((ref) => readField("id", ref) !== postId);
+              },
             },
-          },
-        });
-        if (id) cache.evict({ id });
-        cache.gc();
-      },
-    });
-    setOpen(false);
+          });
+          if (id) cache.evict({ id });
+          cache.gc();
+        },
+      });
+      if (!data?.deletePost) {
+        window.alert("삭제에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch (e) {
+      // FORBIDDEN(토큰 없음/만료) 등 — 조용히 실패하지 말고 원인을 노출한다.
+      const msg = e instanceof Error ? e.message : "알 수 없는 오류";
+      window.alert(`삭제에 실패했어요: ${msg}`);
+    } finally {
+      setOpen(false);
+    }
   };
 
   return (

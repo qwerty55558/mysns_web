@@ -320,34 +320,44 @@ export function CommentRow({
 
   const onDelete = async () => {
     if (!window.confirm("댓글을 삭제할까요?")) return;
-    await deleteComment({
-      variables: { id: comment.id },
-      update: (cache) => {
-        const postCacheId = cache.identify({ __typename: "Post", id: postId });
-        if (postCacheId) {
-          cache.modify({
-            id: postCacheId,
-            fields: {
-              commentCount(existing) {
-                return Math.max(0, (typeof existing === "number" ? existing : 0) - 1);
+    try {
+      const { data } = await deleteComment({
+        variables: { id: comment.id },
+        // 서버가 실제로 지웠을 때만 캐시 반영 (illusion 방지)
+        update: (cache, { data: result }) => {
+          if (!result?.deleteComment) return;
+          const postCacheId = cache.identify({ __typename: "Post", id: postId });
+          if (postCacheId) {
+            cache.modify({
+              id: postCacheId,
+              fields: {
+                commentCount(existing) {
+                  return Math.max(0, (typeof existing === "number" ? existing : 0) - 1);
+                },
+                comments(existing: ReadonlyArray<{ __ref: string }> = [], { readField }) {
+                  return existing.filter(
+                    (ref) => readField("id", ref) !== comment.id,
+                  );
+                },
+                previewComment(existing, { readField }) {
+                  if (existing && readField("id", existing) === comment.id) return null;
+                  return existing;
+                },
               },
-              comments(existing: ReadonlyArray<{ __ref: string }> = [], { readField }) {
-                return existing.filter(
-                  (ref) => readField("id", ref) !== comment.id,
-                );
-              },
-              previewComment(existing, { readField }) {
-                if (existing && readField("id", existing) === comment.id) return null;
-                return existing;
-              },
-            },
-          });
-        }
-        const id = cache.identify({ __typename: "Comment", id: comment.id });
-        if (id) cache.evict({ id });
-        cache.gc();
-      },
-    });
+            });
+          }
+          const id = cache.identify({ __typename: "Comment", id: comment.id });
+          if (id) cache.evict({ id });
+          cache.gc();
+        },
+      });
+      if (!data?.deleteComment) {
+        window.alert("댓글 삭제에 실패했어요. 잠시 후 다시 시도해 주세요.");
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "알 수 없는 오류";
+      window.alert(`댓글 삭제에 실패했어요: ${msg}`);
+    }
   };
 
   return (
