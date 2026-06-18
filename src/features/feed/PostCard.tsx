@@ -154,7 +154,7 @@ export function PostCard({ post }: { post: Post }) {
     <>
       <article
         className="overflow-hidden rounded-2xl bg-[color:var(--paper)] ring-1 ring-black/5 shadow-[0_18px_38px_-28px_rgba(20,12,30,0.45)]"
-        style={t ? { background: t.tint } : undefined}
+        style={t ? { backgroundImage: `linear-gradient(${t.tint}, ${t.tint})` } : undefined}
       >
         {t && <div className="h-1 w-full" style={{ background: t.gradient }} aria-hidden />}
         <PostHeader post={post} isMine={isMine} onEdit={() => setEditing(true)} theme={t} />
