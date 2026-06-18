@@ -11,6 +11,7 @@ import { SendMoneyButton } from "@/features/wallet/SendMoneyButton";
 import { UserListModal, type ConnTab } from "./UserListModal";
 import { SubscriptionEntryCard } from "@/features/subscription/SubscriptionEntryCard";
 import { EmphasizedName } from "./EmphasizedName";
+import { ProfileEditSheet } from "./ProfileEditSheet";
 
 const ProfileQuery = graphql(`
   query Profile($username: String!) {
@@ -65,6 +66,7 @@ const UnfollowMutation = graphql(`
 export function ProfileView({ username }: { username: string }) {
   const { data: session } = useSession();
   const [connTab, setConnTab] = useState<ConnTab | null>(null);
+  const [editing, setEditing] = useState(false);
   const { data, loading, error } = useQuery(ProfileQuery, {
     variables: { username },
   });
@@ -147,6 +149,15 @@ export function ProfileView({ username }: { username: string }) {
                 />
               </div>
             )}
+            {isMe && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="shrink-0 rounded-full border border-[color:var(--rule)] px-4 py-1.5 text-[12.5px] font-medium text-[color:var(--foreground)] transition-colors hover:border-[color:var(--pay)]/50"
+              >
+                프로필 편집
+              </button>
+            )}
           </div>
           {user.bio && <p className="text-[13.5px] leading-snug">{user.bio}</p>}
           <dl className="mt-1 flex items-center gap-5 text-[12.5px]">
@@ -211,6 +222,17 @@ export function ProfileView({ username }: { username: string }) {
         )}
       </section>
 
+      {editing && (
+        <ProfileEditSheet
+          user={{
+            id: user.id,
+            displayName: user.displayName,
+            bio: user.bio,
+            avatarUrl: user.avatarUrl,
+          }}
+          onClose={() => setEditing(false)}
+        />
+      )}
       {connTab && (
         <UserListModal
           username={user.username}
