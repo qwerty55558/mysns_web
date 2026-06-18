@@ -77,7 +77,7 @@ type Query {
     post(id: ID!): Post
     feed(limit: Int! = 20, offset: Int! = 0): [Post!]!
     bookmarks(limit: Int! = 20, offset: Int! = 0): [Post!]!
-    analyzeReceipt(imageUrl: String!): ReceiptAnalysis
+    analyzeReceipt(imageUrls: [String!]!): ReceiptAnalysis!
 
     # Search
     # 유저 검색 (username/displayName 부분일치, 팔로워순).
@@ -175,6 +175,8 @@ type Mutation {
 
     # Profile
     updateMe(input: UpdateMeInput!): User!
+    # 회원 탈퇴 (잔액·진행 중 정산이 없을 때만 허용). 성공 시 true.
+    deleteMe: Boolean!
 
     # Notifications
     markNotificationRead(id: ID!): Boolean!

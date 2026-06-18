@@ -59,8 +59,8 @@ const CreatePostMutation = graphql(`
 `);
 
 const AnalyzeReceiptQuery = graphql(`
-  query AnalyzeReceipt($imageUrl: String!) {
-    analyzeReceipt(imageUrl: $imageUrl) {
+  query AnalyzeReceipt($imageUrls: [String!]!) {
+    analyzeReceipt(imageUrls: $imageUrls) {
       amount
       item
       tag
@@ -76,6 +76,7 @@ type ImageDraft = {
   blobUrl: string;
   remoteUrl: string | null;
   status: "uploading" | "analyzing" | "done" | "failed";
+  kind: "photo" | "receipt";
   error?: string;
 };
 
@@ -94,7 +95,7 @@ export function PostComposer() {
   // OCR 결과 안내 (저신뢰도 안내 + rawText 참고 표시)
   const [ocrNotice, setOcrNotice] = useState<string | null>(null);
   const [ocrRawText, setOcrRawText] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [receiptAnalyzing, setReceiptAnalyzing] = useState(false);
   const formId = useId();
   const amountRef = useRef(amount);
   amountRef.current = amount;
@@ -106,12 +107,84 @@ export function PostComposer() {
   placeRef.current = place;
   const imagesRef = useRef(images);
   imagesRef.current = images;
+  // 이미 분석한 영수증 URL 조합을 기억 — 같은 세트 중복 호출 방지
+  const analyzedReceiptKeyRef = useRef("");
 
   useEffect(() => {
     return () => {
       for (const img of imagesRef.current) URL.revokeObjectURL(img.blobUrl);
     };
   }, []);
+
+  // 영수증으로 지정한 이미지들이 모두 업로드되면, URL 배열을 모아 한 번에
+  // analyzeReceipt(imageUrls) 로 합산 분석한다. (사진은 분석하지 않음)
+  useEffect(() => {
+    const receipts = images.filter((img) => img.kind === "receipt");
+    if (receipts.length === 0) return;
+    if (receipts.some((img) => img.status === "uploading")) return; // 업로드 끝날 때까지 대기
+    const urls = receipts
+      .filter((img) => img.remoteUrl)
+      .map((img) => img.remoteUrl as string);
+    if (urls.length === 0) return;
+    const key = [...urls].sort().join("|");
+    if (key === analyzedReceiptKeyRef.current) return; // 동일 세트 재분석 방지
+    analyzedReceiptKeyRef.current = key;
+
+    let cancelled = false;
+    void (async () => {
+      setReceiptAnalyzing(true);
+      try {
+        const { data } = await client.query({
+          query: AnalyzeReceiptQuery,
+          variables: { imageUrls: urls },
+          fetchPolicy: "network-only",
+        });
+        if (cancelled) return;
+        const ocr = data?.analyzeReceipt;
+        // BE는 confidence < 임계값이면 amount=null로 떨군다 → amount 유무가 신뢰 신호.
+        // prefill은 비어있는 칸만 채운다(추천-only, 사용자 입력 보존).
+        if (ocr && ocr.amount != null) {
+          if (amountRef.current.trim() === "") {
+            const next = String(ocr.amount);
+            amountRef.current = next;
+            setAmount(next);
+          }
+          if (ocr.item && itemRef.current.trim() === "") {
+            itemRef.current = ocr.item;
+            setItem(ocr.item);
+          }
+          if (ocr.tag && tagRef.current.trim() === "") {
+            tagRef.current = ocr.tag;
+            setTag(ocr.tag);
+          }
+          if (ocr.placeName && !placeRef.current) {
+            try {
+              const found = await searchPlaceByName(ocr.placeName);
+              if (found && !placeRef.current && !cancelled) {
+                placeRef.current = found;
+                setPlace(found);
+              }
+            } catch {
+              // 카카오 검색 실패 — 사용자가 PlacePicker로 직접 추가
+            }
+          }
+          setOcrNotice(null);
+          setOcrRawText(null);
+        } else if (ocr) {
+          setOcrNotice("OCR 결과 신뢰도가 낮습니다. 직접 입력해 주세요.");
+          setOcrRawText(ocr.rawText ?? null);
+        }
+      } catch {
+        // analyzeReceipt 호출 실패 — 치명적 아님
+      } finally {
+        if (!cancelled) setReceiptAnalyzing(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [images, client]);
 
   const [createSplit] = useMutation(CreateSplitMutation);
   const [splitOn, setSplitOn] = useState(false);
@@ -150,78 +223,39 @@ export function PostComposer() {
       prev.map((img) => (img.id === id ? { ...img, ...patch } : img)),
     );
 
-  const onPickFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (files.length === 0) return;
-    setError(null);
-    setExpanded(true);
+  const onPickFiles =
+    (kind: ImageDraft["kind"]) => (e: React.ChangeEvent<HTMLInputElement>) => {
+      const input = e.target;
+      const files = Array.from(input.files ?? []);
+      if (files.length === 0) return;
+      setError(null);
+      setExpanded(true);
 
-    const drafts: ImageDraft[] = files.map((file) => ({
-      id: crypto.randomUUID(),
-      blobUrl: URL.createObjectURL(file),
-      remoteUrl: null,
-      status: "uploading",
-    }));
-    setImages((prev) => [...prev, ...drafts].slice(0, 10));
+      const drafts: ImageDraft[] = files.map((file) => ({
+        id: crypto.randomUUID(),
+        blobUrl: URL.createObjectURL(file),
+        remoteUrl: null,
+        status: "uploading",
+        kind,
+      }));
+      setImages((prev) => [...prev, ...drafts].slice(0, 10));
 
-    if (fileInputRef.current) fileInputRef.current.value = "";
+      input.value = "";
 
-    drafts.forEach((draft, i) => {
-      void processOne(draft.id, files[i]);
-    });
-  };
+      drafts.forEach((draft, i) => {
+        void processOne(draft.id, files[i], kind);
+      });
+    };
 
-  const processOne = async (id: string, file: File) => {
+  const processOne = async (
+    id: string,
+    file: File,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _kind: ImageDraft["kind"],
+  ) => {
     try {
       const r = await uploadImage(file);
-      updateImage(id, { remoteUrl: r.url, status: "analyzing" });
-
-      try {
-        const { data } = await client.query({
-          query: AnalyzeReceiptQuery,
-          variables: { imageUrl: r.url },
-          fetchPolicy: "network-only",
-        });
-        const ocr = data?.analyzeReceipt;
-        // BE의 ReceiptAnalyzer가 confidence < threshold면 의도적으로 amount=null로
-        // 떨군다 → amount 유무가 "신뢰할 수 있는 OCR"의 단일 신호.
-        if (ocr && ocr.amount != null) {
-          if (amountRef.current.trim() === "") {
-            const next = String(ocr.amount);
-            amountRef.current = next;
-            setAmount(next);
-          }
-          if (ocr.item && itemRef.current.trim() === "") {
-            itemRef.current = ocr.item;
-            setItem(ocr.item);
-          }
-          if (ocr.tag && tagRef.current.trim() === "") {
-            tagRef.current = ocr.tag;
-            setTag(ocr.tag);
-          }
-          if (ocr.placeName && !placeRef.current) {
-            try {
-              const found = await searchPlaceByName(ocr.placeName);
-              if (found && !placeRef.current) {
-                placeRef.current = found;
-                setPlace(found);
-              }
-            } catch {
-              // 카카오 검색 실패는 폴백이 아니라 사용자가 PlacePicker로 직접 추가하면 됨
-            }
-          }
-          setOcrNotice(null);
-          setOcrRawText(null);
-        } else if (ocr) {
-          // 저신뢰도 — 자동 채움하지 않고 안내 + rawText 참고 표시
-          setOcrNotice("OCR 결과 신뢰도가 낮습니다. 직접 입력해 주세요.");
-          setOcrRawText(ocr.rawText ?? null);
-        }
-      } catch {
-        // analyzeReceipt 호출 자체 실패 — 치명적 아님
-      }
-
-      updateImage(id, { status: "done" });
+      updateImage(id, { remoteUrl: r.url, status: "done" });
     } catch (err) {
       updateImage(id, {
         status: "failed",
@@ -249,11 +283,12 @@ export function PostComposer() {
     setError(null);
     setOcrNotice(null);
     setOcrRawText(null);
+    setReceiptAnalyzing(false);
+    analyzedReceiptKeyRef.current = "";
     setSplitOn(false);
     setSplitParticipants([]);
     setPickerOpen(false);
     setExpanded(false);
-    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const busyImages = images.some((img) => img.status === "uploading");
@@ -378,11 +413,7 @@ export function PostComposer() {
               pattern="[0-9]*"
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
-              placeholder={
-                images.some((img) => img.status === "analyzing")
-                  ? "영수증 분석 중…"
-                  : "금액(원)"
-              }
+              placeholder={receiptAnalyzing ? "영수증 분석 중…" : "금액(원)"}
               className="w-32 rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-right font-mono text-[13px] tabular-nums outline-none focus:border-[color:var(--foreground)]/40"
             />
           </div>
@@ -497,12 +528,22 @@ export function PostComposer() {
             <CameraIcon />
             사진
             <input
-              ref={fileInputRef}
               type="file"
               accept="image/png,image/jpeg,image/webp"
               multiple
               hidden
-              onChange={onPickFiles}
+              onChange={onPickFiles("photo")}
+            />
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[12px] text-[color:var(--ink-soft)] transition-colors hover:bg-[color:var(--rule)]/40 hover:text-[color:var(--foreground)]">
+            <ReceiptIcon />
+            영수증
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              multiple
+              hidden
+              onChange={onPickFiles("receipt")}
             />
           </label>
         </div>
@@ -572,6 +613,10 @@ function ImageThumb({
         </div>
       )}
 
+      <span className="pointer-events-none absolute left-1 top-1 rounded-full bg-black/55 px-1.5 py-0.5 text-[9px] font-medium leading-none text-white">
+        {draft.kind === "receipt" ? "영수증" : "사진"}
+      </span>
+
       <button
         type="button"
         aria-label="이미지 제거"
@@ -617,6 +662,25 @@ function CameraIcon() {
     >
       <path d="M3 7h3l2-2h8l2 2h3v12H3z" />
       <circle cx="12" cy="13" r="3.5" />
+    </svg>
+  );
+}
+
+function ReceiptIcon() {
+  return (
+    <svg
+      width="15"
+      height="15"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" />
+      <path d="M9 7h6M9 11h6M9 15h4" />
     </svg>
   );
 }
