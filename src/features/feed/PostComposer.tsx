@@ -295,6 +295,7 @@ export function PostComposer() {
   const canSubmit =
     !submitting &&
     !busyImages &&
+    !receiptAnalyzing &&
     content.trim().length > 0 &&
     images.every((img) => img.status !== "failed");
 
@@ -396,6 +397,7 @@ export function PostComposer() {
                   key={img.id}
                   draft={img}
                   onRemove={() => removeImage(img.id)}
+                  analyzing={receiptAnalyzing}
                 />
               ))}
             </div>
@@ -406,7 +408,8 @@ export function PostComposer() {
               value={item}
               onChange={(e) => setItem(e.target.value)}
               placeholder="지출 항목 (예: 김치찌개 정식)"
-              className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40"
+              disabled={receiptAnalyzing}
+              className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40 disabled:opacity-50 disabled:cursor-not-allowed"
             />
             <input
               inputMode="numeric"
@@ -414,7 +417,8 @@ export function PostComposer() {
               value={amount}
               onChange={(e) => setAmount(e.target.value.replace(/[^0-9]/g, ""))}
               placeholder={receiptAnalyzing ? "영수증 분석 중…" : "금액(원)"}
-              className="w-32 rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-right font-mono text-[13px] tabular-nums outline-none focus:border-[color:var(--foreground)]/40"
+              disabled={receiptAnalyzing}
+              className="w-32 rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-right font-mono text-[13px] tabular-nums outline-none focus:border-[color:var(--foreground)]/40 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
 
@@ -422,7 +426,8 @@ export function PostComposer() {
             value={tag}
             onChange={(e) => setTag(e.target.value)}
             placeholder="태그 (#커피 같이 자유)"
-            className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[12.5px] outline-none focus:border-[color:var(--foreground)]/40"
+            disabled={receiptAnalyzing}
+            className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[12.5px] outline-none focus:border-[color:var(--foreground)]/40 disabled:opacity-50 disabled:cursor-not-allowed"
           />
 
           <PlacePicker value={place} onChange={setPlace} />
@@ -567,7 +572,9 @@ export function PostComposer() {
               ? "게시 중…"
               : busyImages
                 ? "업로드 중…"
-                : "게시"}
+                : receiptAnalyzing
+                  ? "영수증 분석 중…"
+                  : "게시"}
           </button>
         </div>
       </div>
@@ -578,10 +585,15 @@ export function PostComposer() {
 function ImageThumb({
   draft,
   onRemove,
+  analyzing,
 }: {
   draft: ImageDraft;
   onRemove: () => void;
+  analyzing?: boolean;
 }) {
+  // 합산 분석 중인 영수증 썸네일에 펜딩 오버레이를 띄운다.
+  const showAnalyzing =
+    !!analyzing && draft.kind === "receipt" && draft.status === "done";
   return (
     <div className="group/thumb relative h-20 w-20 shrink-0 overflow-hidden rounded-lg ring-1 ring-black/5">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -591,7 +603,7 @@ function ImageThumb({
         className="h-full w-full object-cover"
       />
 
-      {draft.status !== "done" && (
+      {(draft.status !== "done" || showAnalyzing) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/40 text-[10px] font-medium text-white">
           {draft.status === "uploading" && (
             <>
@@ -599,7 +611,7 @@ function ImageThumb({
               <span>업로드 중</span>
             </>
           )}
-          {draft.status === "analyzing" && (
+          {showAnalyzing && (
             <>
               <Spinner />
               <span>영수증 분석…</span>
