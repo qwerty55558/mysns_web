@@ -225,3 +225,70 @@ img {
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* 이름 강조(NameEmphasis) 모션 — 정적 스타일은 EmphasizedName 인라인에서 적용하고
+   여기선 움직임만 얹는다. --emph 는 강조 색(accent)을 인라인으로 받는다.
+   reduced-motion 환경에선 애니메이션을 끄고 인라인 정적 스타일만 남긴다. */
+@keyframes name-gradient-flow {
+  to {
+    background-position: 200% center;
+  }
+}
+.name-emph-gradient {
+  background-size: 200% auto;
+  animation: name-gradient-flow 4s linear infinite;
+}
+
+@keyframes name-glow-pulse {
+  0%,
+  100% {
+    text-shadow: 0 0 5px var(--emph);
+  }
+  50% {
+    text-shadow:
+      0 0 12px var(--emph),
+      0 0 22px var(--emph);
+  }
+}
+.name-emph-glow {
+  animation: name-glow-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes name-neon-flicker {
+  0%,
+  18%,
+  22%,
+  53%,
+  57%,
+  100% {
+    text-shadow:
+      0 0 3px var(--emph),
+      0 0 9px var(--emph),
+      0 0 16px var(--emph);
+    opacity: 1;
+  }
+  20%,
+  55% {
+    text-shadow: 0 0 2px var(--emph);
+    opacity: 0.78;
+  }
+}
+.name-emph-neon {
+  animation: name-neon-flicker 3.2s linear infinite;
+}
+
+@keyframes name-sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.82) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(90deg);
+  }
+}
+.name-emph-sparkle-star {
+  display: inline-block;
+  animation: name-sparkle-twinkle 1.5s ease-in-out infinite;
+}
