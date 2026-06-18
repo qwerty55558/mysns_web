@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useMutation } from "@apollo/client/react";
 import { graphql } from "@/gql";
@@ -32,22 +32,32 @@ export function ProfileEditSheet({ user, onClose }: Props) {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [bio, setBio] = useState(user.bio ?? "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(user.avatarUrl);
+  // 업로드 완료를 기다리지 않고 선택 즉시 미리보기 (브라우저 메모리의 object URL)
+  const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [updateMe, { loading: saving }] = useMutation(UpdateMeProfileMutation);
+
+  useEffect(() => {
+    return () => {
+      if (preview) URL.revokeObjectURL(preview);
+    };
+  }, [preview]);
 
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (fileRef.current) fileRef.current.value = "";
     if (!file) return;
     setError(null);
+    setPreview(URL.createObjectURL(file)); // 즉시 미리보기
     setUploading(true);
     try {
       const r = await uploadImage(file);
       setAvatarUrl(r.url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "업로드 실패");
+      setPreview(null); // 업로드 실패 시 미리보기 원복
     } finally {
       setUploading(false);
     }
@@ -56,6 +66,9 @@ export function ProfileEditSheet({ user, onClose }: Props) {
   const name = displayName.trim();
   const canSave = name.length > 0 && !saving && !uploading;
 
+  // 미리보기(로컬 blob)가 있으면 그걸, 없으면 저장된 아바타를 보여준다
+  const shownAvatar = preview ?? (avatarUrl ? toAbsoluteMediaUrl(avatarUrl) : null);
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSave) return;
@@ -63,7 +76,9 @@ export function ProfileEditSheet({ user, onClose }: Props) {
     try {
       await updateMe({
         variables: {
-          input: { displayName: name, bio: bio.trim() || null, avatarUrl },
+          // BE 계약: null = 변경 안 함, "" = 값 비우기(clear). 그래서 제거/비우기는
+          // null 이 아니라 "" 로 보내야 실제로 반영된다.
+          input: { displayName: name, bio: bio.trim(), avatarUrl: avatarUrl ?? "" },
         },
       });
       onClose();
@@ -78,12 +93,13 @@ export function ProfileEditSheet({ user, onClose }: Props) {
         <div className="flex items-center gap-4">
           <span className="bg-pay-gradient inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full p-[3px]">
             <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[color:var(--paper)] text-[22px] font-semibold">
-              {avatarUrl ? (
+              {shownAvatar ? (
                 <Image
-                  src={toAbsoluteMediaUrl(avatarUrl)}
+                  src={shownAvatar}
                   alt=""
                   width={80}
                   height={80}
+                  unoptimized
                   className="h-full w-full object-cover"
                 />
               ) : (
@@ -100,10 +116,13 @@ export function ProfileEditSheet({ user, onClose }: Props) {
             >
               {uploading ? "업로드 중…" : "사진 변경"}
             </button>
-            {avatarUrl && (
+            {shownAvatar && (
               <button
                 type="button"
-                onClick={() => setAvatarUrl(null)}
+                onClick={() => {
+                  setPreview(null);
+                  setAvatarUrl(null);
+                }}
                 className="text-left text-[11.5px] text-[color:var(--ink-soft)] transition-colors hover:text-[color:var(--danger)]"
               >
                 사진 제거
