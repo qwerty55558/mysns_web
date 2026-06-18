@@ -36,6 +36,22 @@ const CreatePostMutation = graphql(`
       viewerHasLiked
       viewerHasBookmarked
       theme
+      type
+      crowdfunding {
+        id
+        goalAmount
+        currentAmount
+        backerCount
+        progressPercent
+        status
+        deadline
+        canCloseEarly
+        viewerBacking {
+          id
+          amount
+          status
+        }
+      }
       author {
         id
         username
@@ -186,6 +202,10 @@ export function PostComposer() {
     };
   }, [images, client]);
 
+  const [fundingOn, setFundingOn] = useState(false);
+  const [goalAmount, setGoalAmount] = useState("");
+  const [deadline, setDeadline] = useState(""); // datetime-local value
+
   const [createSplit] = useMutation(CreateSplitMutation);
   const [splitOn, setSplitOn] = useState(false);
   const [splitParticipants, setSplitParticipants] = useState<Friend[]>([]);
@@ -285,6 +305,9 @@ export function PostComposer() {
     setOcrRawText(null);
     setReceiptAnalyzing(false);
     analyzedReceiptKeyRef.current = "";
+    setFundingOn(false);
+    setGoalAmount("");
+    setDeadline("");
     setSplitOn(false);
     setSplitParticipants([]);
     setPickerOpen(false);
@@ -292,12 +315,16 @@ export function PostComposer() {
   };
 
   const busyImages = images.some((img) => img.status === "uploading");
+  const fundingValid =
+    !fundingOn ||
+    (Number(goalAmount) > 0 && deadline !== "");
   const canSubmit =
     !submitting &&
     !busyImages &&
     !receiptAnalyzing &&
     content.trim().length > 0 &&
-    images.every((img) => img.status !== "failed");
+    images.every((img) => img.status !== "failed") &&
+    fundingValid;
 
   const amountNum = Number(amount.replace(/[^0-9]/g, "")) || 0;
 
@@ -310,6 +337,10 @@ export function PostComposer() {
     const uploadedUrls = images
       .filter((img) => img.remoteUrl)
       .map((img) => img.remoteUrl as string);
+    if (fundingOn && new Date(deadline).getTime() <= Date.now()) {
+      setError("마감 기한은 현재 시각 이후여야 합니다.");
+      return;
+    }
     setError(null);
     setSplitNotice(null);
     try {
@@ -332,6 +363,15 @@ export function PostComposer() {
                   categoryCode: place.categoryCode ?? null,
                 }
               : null,
+            ...(fundingOn
+              ? {
+                  type: "CROWDFUNDING" as const,
+                  crowdfunding: {
+                    goalAmount: Number(goalAmount.replace(/[^0-9]/g, "")),
+                    deadline: new Date(deadline).toISOString(),
+                  },
+                }
+              : {}),
           },
         },
       });
@@ -431,6 +471,51 @@ export function PostComposer() {
           />
 
           <PlacePicker value={place} onChange={setPlace} />
+
+          <div className="flex flex-col gap-2">
+            <label
+              className="flex items-center gap-2 cursor-pointer select-none"
+              onClick={() => setFundingOn((v) => !v)}
+            >
+              <span
+                role="checkbox"
+                aria-checked={fundingOn}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setFundingOn((v) => !v);
+                  }
+                }}
+                className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${
+                  fundingOn
+                    ? "border-transparent bg-pay text-[color:var(--pay-on)]"
+                    : "border-[color:var(--rule)] text-transparent"
+                }`}
+              >
+                ✓
+              </span>
+              <span className="text-[13px] text-[color:var(--foreground)]">크라우드펀딩으로 모금</span>
+            </label>
+            {fundingOn && (
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <input
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={goalAmount}
+                  onChange={(e) => setGoalAmount(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="목표 금액(원)"
+                  className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40"
+                />
+                <input
+                  type="datetime-local"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="rounded-md border border-[color:var(--rule)] bg-[color:var(--paper)] px-3 py-2 text-[13px] outline-none focus:border-[color:var(--foreground)]/40"
+                />
+              </div>
+            )}
+          </div>
 
           {amountNum > 0 && (
             <div className="flex flex-col gap-2">

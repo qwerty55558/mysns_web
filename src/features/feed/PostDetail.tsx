@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useQuery } from "@apollo/client/react";
+import { useSession } from "next-auth/react";
 import { graphql } from "@/gql";
 import { PostCard } from "./PostCard";
 import { InlineComments } from "./InlineComments";
+import { CrowdfundingChecklist } from "@/features/crowdfunding/CrowdfundingChecklist";
 
 const PostQuery = graphql(`
   query Post($id: ID!) {
@@ -31,6 +33,28 @@ const PostQuery = graphql(`
       viewerHasLiked
       viewerHasBookmarked
       theme
+      type
+      crowdfunding {
+        id
+        goalAmount
+        currentAmount
+        backerCount
+        progressPercent
+        status
+        deadline
+        canCloseEarly
+        viewerBacking {
+          id
+          amount
+          status
+        }
+        checklist {
+          id
+          text
+          done
+          position
+        }
+      }
       author {
         id
         username
@@ -55,6 +79,7 @@ const PostQuery = graphql(`
 
 export function PostDetail({ id }: { id: string }) {
   const { data, loading, error } = useQuery(PostQuery, { variables: { id } });
+  const { data: sessionData } = useSession();
 
   if (loading)
     return (
@@ -66,6 +91,7 @@ export function PostDetail({ id }: { id: string }) {
     );
 
   const post = data?.post;
+  const isCreator = sessionData?.user?.id === post?.author.id;
   if (!post)
     return (
       <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-[color:var(--rule)] py-12 text-center">
@@ -82,6 +108,15 @@ export function PostDetail({ id }: { id: string }) {
   return (
     <div className="flex flex-col gap-4">
       <PostCard post={post} />
+      {post.type === "CROWDFUNDING" &&
+        post.crowdfunding &&
+        post.crowdfunding.status === "SUCCEEDED" && (
+          <CrowdfundingChecklist
+            crowdfundingId={post.crowdfunding.id}
+            items={post.crowdfunding.checklist}
+            isCreator={isCreator}
+          />
+        )}
       <InlineComments postId={post.id} />
     </div>
   );
