@@ -15,6 +15,9 @@ import { PostCarousel } from "./PostCarousel";
 import { CommentSheet } from "./CommentSheet";
 import { PlacePicker, type PlaceDraft } from "./PlacePicker";
 import { ShareToDirectSheet } from "@/features/messages/ShareToDirectSheet";
+import { CrowdfundingCard } from "@/features/crowdfunding/CrowdfundingCard";
+import type { CrowdfundingCardData } from "@/features/crowdfunding/CrowdfundingCard";
+import type { PostType } from "@/gql/graphql";
 
 type Author = {
   id: string;
@@ -60,6 +63,8 @@ type Post = {
   author: Author;
   previewComment?: PreviewComment | null;
   theme?: ThemePreset | null;
+  type?: PostType | null;
+  crowdfunding?: CrowdfundingCardData | null;
 };
 
 const LikeMutation = graphql(`
@@ -166,6 +171,12 @@ export function PostCard({ post }: { post: Post }) {
             amount={post.amount}
             theme={t}
           />
+        )}
+
+        {post.type === "CROWDFUNDING" && post.crowdfunding && (
+          <div className="px-4 pb-1">
+            <CrowdfundingCard cf={post.crowdfunding} isCreator={isMine} />
+          </div>
         )}
 
         <PostActions

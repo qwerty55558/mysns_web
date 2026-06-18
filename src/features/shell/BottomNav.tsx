@@ -28,6 +28,7 @@ export function BottomNav() {
   const msgActive = pathname.startsWith("/messages");
   const walletActive = pathname.startsWith("/wallet");
   const splitsActive = pathname.startsWith("/splits");
+  const fundingActive = pathname.startsWith("/crowdfunding");
   const profileActive = pathname.startsWith("/u/") || pathname === "/me";
 
   return (
@@ -44,6 +45,9 @@ export function BottomNav() {
         </NavItem>
         <NavItem href="/splits" label="1/N" active={splitsActive} badge={pendingSplits}>
           <SplitIcon filled={splitsActive} />
+        </NavItem>
+        <NavItem href="/crowdfunding" label="펀딩" active={fundingActive}>
+          <FundingIcon filled={fundingActive} />
         </NavItem>
         <NavItem href="/me" label="프로필" active={profileActive}>
           <PersonIcon filled={profileActive} />
@@ -191,6 +195,26 @@ function PersonIcon({ filled }: { filled: boolean }) {
     >
       <circle cx="12" cy="8" r="4" />
       <path d="M4 21a8 8 0 0 1 16 0" />
+    </svg>
+  );
+}
+
+function FundingIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M12 3 C8 3 5 6 5 10 C5 14 8 17 12 19 C16 17 19 14 19 10 C19 6 16 3 12 3Z" />
+      <line x1="12" y1="19" x2="12" y2="21" />
+      <line x1="9" y1="21" x2="15" y2="21" />
     </svg>
   );
 }

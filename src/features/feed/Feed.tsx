@@ -34,6 +34,22 @@ const FeedQuery = graphql(`
       viewerHasLiked
       viewerHasBookmarked
       theme
+      type
+      crowdfunding {
+        id
+        goalAmount
+        currentAmount
+        backerCount
+        progressPercent
+        status
+        deadline
+        canCloseEarly
+        viewerBacking {
+          id
+          amount
+          status
+        }
+      }
       author {
         id
         username
