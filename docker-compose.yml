@@ -37,7 +37,10 @@ services:
     platform: linux/amd64
     restart: unless-stopped
     networks:
-      - payflow-net
+      # nginx upstream 이 payflow-frontend 로 찾으므로 해당 alias 를 단다.
+      payflow-net:
+        aliases:
+          - payflow-frontend
     # nginx 가 네트워크 내부에서 web:3000 으로 접근하므로 호스트 포트는 불필요.
     # nginx 없이 직접 띄워 확인하려면 아래 주석을 해제:
     #   ports: ["3000:3000"]
@@ -47,6 +50,9 @@ services:
       NODE_ENV: production
       AUTH_SECRET: ${AUTH_SECRET}
       AUTH_TRUST_HOST: ${AUTH_TRUST_HOST:-true}   # nginx(리버스 프록시) 뒤라 필수
+      # 리버스 프록시 뒤에서 Auth.js 가 공개 도메인을 모르면 redirect 가 0.0.0.0:3000 으로 깨진다.
+      # AUTH_URL 을 명시해 모든 redirect/cookie 기준을 공개 도메인으로 고정.
+      AUTH_URL: ${AUTH_URL:-https://payflow.clauminirockpt.me}
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s

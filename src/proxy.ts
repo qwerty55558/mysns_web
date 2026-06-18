@@ -19,5 +19,7 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  // 확장자가 있는 정적 파일(.jpg/.svg/.ico 등)은 제외 — 미들웨어가 가로채면
+  // /public 의 이미지가 게스트에게 "/"로 307 리다이렉트되어 안 보인다.
+  matcher: ["/((?!api|_next/static|_next/image|.*\\.).*)"],
 };
