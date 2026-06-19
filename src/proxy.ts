@@ -16,6 +16,13 @@ export default auth((req) => {
   if (PUBLIC.has(path)) return;
 
   if (!isAuthed) return NextResponse.redirect(new URL("/", req.nextUrl));
+
+  // 인증 보호 라우트는 bfcache(뒤로가기 스냅샷)에 남기지 않는다.
+  // no-store가 없으면 로그아웃 후 뒤로가기 시 로그인 상태 화면이 그대로
+  // 복원되어 가드(위 redirect)가 새 요청 없이 우회된다.
+  const res = NextResponse.next();
+  res.headers.set("Cache-Control", "no-store, must-revalidate");
+  return res;
 });
 
 export const config = {
