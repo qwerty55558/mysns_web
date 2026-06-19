@@ -25,12 +25,20 @@ export function LoginCard() {
           or
           <span className="h-px flex-1 bg-[color:var(--rule)]" />
         </div>
-        <p className="mt-4 text-center text-[12px] text-[color:var(--ink-soft)]">
-          Stage 1 데모 계정 ·{" "}
-          <span className="font-mono text-[color:var(--foreground)]/80">
-            alice / password
-          </span>
-        </p>
+        <div className="mt-4 space-y-1 text-center text-[12px] text-[color:var(--ink-soft)]">
+          <p>
+            테스트 계정 ·{" "}
+            <span className="font-mono text-[color:var(--foreground)]/80">
+              alice / password
+            </span>
+          </p>
+          <p>
+            어드민 ·{" "}
+            <span className="font-mono text-[color:var(--foreground)]/80">
+              admin / password
+            </span>
+          </p>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-[color:var(--rule)] bg-[color:var(--paper)] px-6 py-5 text-center text-[13px] text-[color:var(--foreground)]/80">
