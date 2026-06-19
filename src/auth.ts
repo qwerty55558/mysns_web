@@ -14,6 +14,7 @@ const LOGIN_QUERY = /* GraphQL */ `
         id
         username
         displayName
+        role
       }
     }
   }
@@ -29,6 +30,7 @@ const REFRESH_QUERY = /* GraphQL */ `
         id
         username
         displayName
+        role
       }
     }
   }
@@ -38,7 +40,7 @@ type AuthPayload = {
   accessToken: string;
   refreshToken: string;
   accessTokenExpiresAt: string;
-  user: { id: string; username: string; displayName: string };
+  user: { id: string; username: string; displayName: string; role: "USER" | "ADMIN" };
 };
 
 // 만료 임박 임계 — accessTokenExpiresAt − SKEW_MS 이전에는 재사용, 이후엔 refresh
@@ -98,6 +100,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           accessToken: payload.accessToken,
           refreshToken: payload.refreshToken,
           accessTokenExpiresAt: new Date(payload.accessTokenExpiresAt).getTime(),
+          role: payload.user.role,
         };
       },
     }),
@@ -110,6 +113,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.accessTokenExpiresAt = user.accessTokenExpiresAt;
         token.username = user.username;
         token.userId = user.id;
+        token.role = user.role;
         token.error = undefined;
         return token;
       }
@@ -134,6 +138,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       token.accessTokenExpiresAt = new Date(
         refreshed.accessTokenExpiresAt,
       ).getTime();
+      token.role = refreshed.user.role;
       token.error = undefined;
       return token;
     },
@@ -144,6 +149,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const id = token.userId ?? token.sub;
         if (id) session.user.id = id;
         session.user.username = token.username;
+        session.user.role = token.role;
       }
       return session;
     },
