@@ -11,6 +11,7 @@ declare module "next-auth" {
 
   interface User {
     username?: string;
+    role?: "USER" | "ADMIN";
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpiresAt?: number;
@@ -24,6 +25,7 @@ declare module "next-auth/jwt" {
     accessTokenExpiresAt?: number;
     username?: string;
     userId?: string;
+    role?: "USER" | "ADMIN";
     error?: RefreshError;
   }
 }
