@@ -1,3 +1,4 @@
+import { AdminDevTool } from "./AdminDevTool";
 import { AppHeader } from "./AppHeader";
 import { BottomNav } from "./BottomNav";
 import { PageSlide } from "./PageSlide";
@@ -26,6 +27,7 @@ export function AppShell({
         </main>
       </PageSlide>
       {showNav && <BottomNav />}
+      <AdminDevTool />
     </div>
   );
 }
