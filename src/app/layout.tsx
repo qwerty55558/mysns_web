@@ -9,6 +9,7 @@ import {
   Black_Han_Sans,
 } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
+import { auth } from "@/auth";
 import { ApolloProvider } from "@/lib/apollo-provider";
 import { AuthTokenBridge } from "@/features/auth/AuthTokenBridge";
 import "./globals.css";
@@ -57,13 +58,17 @@ export const metadata: Metadata = {
     "친구들과 소비의 흐름을 공유하고, 같은 앱에서 바로 송금까지. 한 컷, 한 영수증, 한 번의 탭.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   modal,
 }: Readonly<{
   children: React.ReactNode;
   modal: React.ReactNode;
 }>) {
+  // 서버에서 세션(쿠키)을 미리 읽어 SessionProvider에 주입한다. 이게 없으면
+  // 새로고침(F5) 시 첫 클라 렌더가 status="loading"이라 토큰 없이 쿼리가 나가
+  // 비공개 글이 빈 배열로 캐시된다. 주입하면 첫 렌더부터 인증 상태가 된다.
+  const session = await auth();
   return (
     <html
       lang="ko"
@@ -74,7 +79,11 @@ export default function RootLayout({
         {/* refetchInterval: accessToken TTL(15분)보다 짧은 10분마다 세션 재조회로
             jwt 콜백이 만료 전 refresh를 돌게 한다. 폴링이 없으면 탭을 켜둔 채
             15분이 지났을 때 인메모리 토큰이 만료된 채 고정돼 updateMe/SSE가 거부된다. */}
-        <SessionProvider refetchInterval={600} refetchOnWindowFocus>
+        <SessionProvider
+          session={session}
+          refetchInterval={600}
+          refetchOnWindowFocus
+        >
           <AuthTokenBridge />
           <ApolloProvider>
             {children}

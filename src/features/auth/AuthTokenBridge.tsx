@@ -6,9 +6,14 @@ import { setClientAuthToken } from "@/lib/auth-token";
 
 export function AuthTokenBridge() {
   const { data } = useSession();
-  useEffect(() => {
+  // 토큰을 effect가 아닌 render 시점에 동기 반영한다. effect는 자식→부모 순으로
+  // 실행돼 하위 컴포넌트의 useQuery가 토큰보다 먼저 요청을 쏠 수 있다(미인증 →
+  // 비공개 글 빈 배열 캐시). render는 부모(이 컴포넌트는 layout 상위)가 먼저
+  // 실행되므로 하위 쿼리보다 앞서 토큰이 준비된다. 서버 모듈 전역은 요청 간
+  // 공유되므로 클라이언트에서만 set한다(다른 사용자에게 토큰 누수 방지).
+  if (typeof window !== "undefined") {
     setClientAuthToken(data?.accessToken ?? null);
-  }, [data?.accessToken]);
+  }
 
   useEffect(() => {
     if (data?.error === "RefreshAccessTokenError") {
