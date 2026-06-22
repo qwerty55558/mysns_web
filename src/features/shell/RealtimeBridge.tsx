@@ -3,20 +3,22 @@
 import { useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useApolloClient } from "@apollo/client/react";
-import { getClientAuthToken } from "@/lib/auth-token";
 
 const ENDPOINT =
   process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT ?? "http://localhost:8080/graphql";
 const BASE = ENDPOINT.replace(/\/graphql\/?$/, "");
 
 export function RealtimeBridge() {
-  const { status } = useSession();
+  const { data, status } = useSession();
   const client = useApolloClient();
+  // 토큰은 EventSource URL 쿼리에 박혀 연결 시점에 고정되므로,
+  // 세션의 accessToken을 직접 deps로 두어 갱신될 때마다 재연결한다.
+  // (in-memory getClientAuthToken은 비반응형이라 갱신을 놓쳤음)
+  const token = data?.accessToken ?? null;
 
   useEffect(() => {
     if (status !== "authenticated") return;
 
-    const token = getClientAuthToken();
     const url =
       `${BASE}/events/stream` +
       (token ? `?token=${encodeURIComponent(token)}` : "");
@@ -48,7 +50,7 @@ export function RealtimeBridge() {
     });
 
     return () => es.close();
-  }, [status, client]);
+  }, [status, client, token]);
 
   return null;
 }
