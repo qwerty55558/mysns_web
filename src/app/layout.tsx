@@ -71,7 +71,10 @@ export default function RootLayout({
       style={{ colorScheme: "light" }}
     >
       <body className="min-h-full flex flex-col paper-grid">
-        <SessionProvider>
+        {/* refetchInterval: accessToken TTL(15분)보다 짧은 10분마다 세션 재조회로
+            jwt 콜백이 만료 전 refresh를 돌게 한다. 폴링이 없으면 탭을 켜둔 채
+            15분이 지났을 때 인메모리 토큰이 만료된 채 고정돼 updateMe/SSE가 거부된다. */}
+        <SessionProvider refetchInterval={600} refetchOnWindowFocus>
           <AuthTokenBridge />
           <ApolloProvider>
             {children}

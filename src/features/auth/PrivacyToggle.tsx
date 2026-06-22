@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client/react";
 import { graphql } from "@/gql";
+import type { UpdateMePrivacyMutation } from "@/gql/graphql";
 
 const MePrivacyQuery = graphql(`
   query MePrivacy {
@@ -36,12 +37,16 @@ export function PrivacyToggle() {
     try {
       await updateMe({
         variables: { privateAccount: !current },
+        // __typename이 없으면 Apollo가 User:id로 정규화하지 못해 me 쿼리
+        // 캐시에 머지되지 않아 토글이 즉시 반응하지 않는다. codegen 타입에는
+        // __typename이 없어 런타임 정규화를 위해 캐스팅으로 보강한다.
         optimisticResponse: {
           updateMe: {
+            __typename: "User",
             id: data?.me?.id ?? "",
             privateAccount: !current,
           },
-        },
+        } as UpdateMePrivacyMutation,
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "변경 실패");
