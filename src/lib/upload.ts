@@ -1,5 +1,3 @@
-import { getClientAuthToken } from "./auth-token";
-
 const GRAPHQL_ENDPOINT =
   process.env.NEXT_PUBLIC_GRAPHQL_ENDPOINT ?? "http://localhost:8080/graphql";
 
@@ -22,11 +20,9 @@ export type UploadResponse = {
 export async function uploadImage(file: File): Promise<UploadResponse> {
   const form = new FormData();
   form.append("file", file);
-  const token = getClientAuthToken();
-  const res = await fetch(`${getBackendOrigin()}/upload`, {
+  const res = await fetch("/api/upload", {
     method: "POST",
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
